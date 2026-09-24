@@ -30,11 +30,15 @@ Run `npm run dev` for the web app or `npm run monitor -- 2026-09-24 2026-09-24` 
 
 If the web app is deployed with a durable worker endpoint and a dedicated bearer secret, an external HTTPS scheduler can replace GitHub cron. Use one production scheduler at a time. Never place the Sectors key in a scheduler URL. The web endpoint is not proof of successful background execution until its deployment and runtime are verified.
 
+## Web deployment
+
+Deploy the Next.js app from `master` to Vercel with Node.js 24 and the standard `next build` command. Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the Vercel server environment. The URL is public; the service-role key must remain a server-only environment variable. GitHub Actions continues to hold `SECTORS_API_KEY` and run the worker, so the web deployment does not need that key. Leave `MONITOR_TRIGGER_TOKEN` and `WATCHLIST_ADMIN_TOKEN` unset to disable web writes; configure them only if their protected endpoints are intentionally needed. Telegram variables remain unset. After deployment, verify the public pages, `/api/health`, and that unauthenticated POST requests to the monitor and watchlist routes cannot write or consume credits. Do not run a second production schedule on Vercel.
+
 ## Evidence and metrics
 
 The dashboard, `/alerts`, `/suppressed`, `/runs`, and `/alerts/[id]` read persisted records. Suppressed decisions retain their reason codes, source timestamp, and provenance; enrichment status is shown on event detail. A missing result is shown as `N/A`, not a success rate. Interruption reduction is `1 - delivered pushes / eligible evaluated watchlist events` when delivery is available. Duplicate alert rate and explainability coverage are computed from actual sends; zero-delivery runs have no measured rate. Run logs record page count, status, latency, estimated Sectors credits, and any partial/failure reason.
 
-There is currently no independently verified unattended scheduled run or deployed app. The hosted Supabase schema and a bounded live Sectors ingestion have been verified, including a repeat run that produced no duplicate filings, evaluations, or alert rows. Hosted RLS policy and database constraints still require an administrative review; the repository migration is tested locally with PGlite.
+The [first independently verified scheduled run](https://github.com/tonny2305/sectors_hackathon/actions/runs/36023434752) completed on 24 September 2026. It scanned 8 filings, found 1 eligible STRUCTURAL event, used 1 Sectors attempt/estimated credit, and queued 1 alert without Telegram delivery. GitHub recorded its start at 15:53 UTC, about 4 hours 23 minutes after the 11:30 UTC slot; one run is insufficient to judge ongoing schedule punctuality. No web deployment has been verified. The hosted Supabase schema and a bounded live Sectors ingestion have been verified, including a repeat run that produced no duplicate filings, evaluations, or alert rows. Hosted RLS policy and database constraints still require an administrative review; the repository migration is tested locally with PGlite.
 
 ## Verification
 

@@ -41,7 +41,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    status: dbStatus === 'CONNECTED' && sectorsConfigured && activeSymbolsCount > 0 ? 'HEALTHY' : 'DEGRADED',
+    status: dbStatus === 'CONNECTED' && activeSymbolsCount > 0 ? 'HEALTHY' : 'DEGRADED',
     timestamp: new Date().toISOString(),
     engineVersion: 'v2.0.0-materiality-sentinel',
     configuration: {
