@@ -142,7 +142,8 @@ language sql security invoker set search_path = '' as $$
   )
   select r.fingerprint, r.symbol, r.source_url, r.source_timestamp, r.source_date, r.holder_name,
     r.normalized_holder_name, r.holder_type, r.transaction_type, r.holding_before, r.holding_after,
-    r.shares_transacted, r.ownership_before_pct, r.ownership_after_pct, r.ownership_delta_pp,
+    r.shares_transacted, r.ownership_before_pct, r.ownership_after_pct,
+    r.ownership_after_pct - r.ownership_before_pct,
     r.reported_ownership_change_pp, r.transaction_value_idr, r.raw_payload_json
   from jsonb_populate_recordset(null::public.filings, p_events) as r
   on conflict (fingerprint) do nothing

@@ -119,7 +119,8 @@ export class SectorsClient {
       if (records.some(row => normalizeSymbol(row.symbol) !== symbol || row.date < start || row.date > end)) {
         throw new SectorsError('DAILY_CONTEXT_MISMATCH');
       }
-      return { records, contextUnavailable: records.length === 0, reason: records.length ? null : 'EMPTY_DAILY_DATA' };
+      const usable = records.some(row => row.close != null && row.volume != null);
+      return { records, contextUnavailable: !usable, reason: usable ? null : 'EMPTY_DAILY_DATA' };
     } catch (error) {
       if (error instanceof SectorsError && error.status === 404) {
         return { records: [], contextUnavailable: true, reason: 'DAILY_NOT_FOUND' };
