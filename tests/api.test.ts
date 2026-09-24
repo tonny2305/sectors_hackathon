@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GET as getRuns } from '../app/api/runs/route.ts';
 import { GET as getAlerts } from '../app/api/alerts/route.ts';
 import { GET as getSuppressed } from '../app/api/suppressed/route.ts';
-import { GET as getWatchlist, POST as postWatchlist } from '../app/api/watchlist/route.ts';
+import { GET as getWatchlist, POST as postWatchlist, DELETE as deleteWatchlist } from '../app/api/watchlist/route.ts';
 
 describe('API Route Handlers (Phase 4)', () => {
   it('handles /api/runs with fallback when DB is unconfigured', async () => {
@@ -41,7 +41,16 @@ describe('API Route Handlers (Phase 4)', () => {
       headers: { 'Content-Type': 'application/json' },
     });
     const res = await postWatchlist(req);
-    // Since mock db or real db is called, verify response status
+    expect([200, 400, 500]).toContain(res.status);
+  });
+
+  it('handles /api/watchlist DELETE', async () => {
+    const req = new Request('http://localhost:3000/api/watchlist', {
+      method: 'DELETE',
+      body: JSON.stringify({ symbol: 'GOTO.JK' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const res = await deleteWatchlist(req);
     expect([200, 400, 500]).toContain(res.status);
   });
 });

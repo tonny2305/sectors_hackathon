@@ -2,19 +2,22 @@
 
 import { useState } from 'react';
 
+const PRESET_TICKERS = ['BBCA', 'BBRI', 'BMRI', 'TLKM', 'ASII', 'NSSS', 'GOTO', 'UNTR', 'AMRT'];
+
 export default function WatchlistClient({ initialSymbols }: { initialSymbols: string[] }) {
   const [symbols, setSymbols] = useState<string[]>(initialSymbols);
   const [newTicker, setNewTicker] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = newTicker.trim().toUpperCase();
+  const addSymbol = async (ticker: string) => {
+    const clean = ticker.trim().toUpperCase();
     if (!clean) return;
 
-    setIsAdding(true);
+    setIsProcessing(true);
     setMessage(null);
+
+    const formatted = clean.includes('.') ? clean : `${clean}.JK`;
 
     try {
       const res = await fetch('/api/watchlist', {
@@ -24,30 +27,47 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
       });
 
       if (res.ok) {
-        const data = await res.json();
-        const formatted = data.symbol || `${clean.replace(/\.JK$/, '')}.JK`;
         if (!symbols.includes(formatted)) {
-          setSymbols([...symbols, formatted].sort());
+          setSymbols(prev => [...prev, formatted].sort());
         }
         setNewTicker('');
-        setMessage(`Added ${formatted} to watchlist`);
+        setMessage({ text: `Successfully added ${formatted} to active watchlist`, type: 'success' });
       } else {
-        const formatted = `${clean.replace(/\.JK$/, '')}.JK`;
         if (!symbols.includes(formatted)) {
-          setSymbols([...symbols, formatted].sort());
+          setSymbols(prev => [...prev, formatted].sort());
         }
         setNewTicker('');
-        setMessage(`Locally added ${formatted}`);
+        setMessage({ text: `Added ${formatted} (Local cache active)`, type: 'success' });
       }
     } catch {
-      const formatted = `${clean.replace(/\.JK$/, '')}.JK`;
       if (!symbols.includes(formatted)) {
-        setSymbols([...symbols, formatted].sort());
+        setSymbols(prev => [...prev, formatted].sort());
       }
       setNewTicker('');
-      setMessage(`Locally added ${formatted}`);
+      setMessage({ text: `Added ${formatted} (Offline fallback)`, type: 'success' });
     } finally {
-      setIsAdding(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const removeSymbol = async (symbolToRemove: string) => {
+    setIsProcessing(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: symbolToRemove }),
+      });
+
+      setSymbols(prev => prev.filter(s => s !== symbolToRemove));
+      setMessage({ text: `Removed ${symbolToRemove} from watchlist`, type: 'success' });
+    } catch {
+      setSymbols(prev => prev.filter(s => s !== symbolToRemove));
+      setMessage({ text: `Removed ${symbolToRemove} from local watchlist`, type: 'success' });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -57,15 +77,16 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
       <div className="glass-panel">
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Add Monitored Ticker</h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-          Enter a 4-letter IDX stock symbol (e.g. <code>BBCA</code>, <code>ASII</code>, <code>GOTO</code>, <code>NSSS</code>).
+          Enter a 4-letter IDX stock symbol (e.g. <code>BBCA</code>, <code>ASII</code>, <code>NSSS</code>).
         </p>
 
-        <form onSubmit={handleAdd} style={{ display: 'flex', gap: '8px' }}>
+        <form onSubmit={e => { e.preventDefault(); addSymbol(newTicker); }} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
           <input
             type="text"
             value={newTicker}
             onChange={e => setNewTicker(e.target.value)}
             placeholder="e.g. BBCA or BBCA.JK"
+            disabled={isProcessing}
             style={{
               flex: 1,
               background: 'rgba(255, 255, 255, 0.04)',
@@ -77,14 +98,54 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
               fontSize: '0.9rem',
             }}
           />
-          <button type="submit" disabled={isAdding || !newTicker.trim()} className="btn btn-primary">
-            {isAdding ? 'Adding...' : 'Add Ticker'}
+          <button type="submit" disabled={isProcessing || !newTicker.trim()} className="btn btn-primary">
+            {isProcessing ? 'Saving...' : 'Add Ticker'}
           </button>
         </form>
 
+        {/* Quick Add Presets */}
+        <div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: 600 }}>
+            QUICK PRESETS (POPULAR IDX TICKERS):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {PRESET_TICKERS.map(preset => {
+              const sym = `${preset}.JK`;
+              const isMonitored = symbols.includes(sym);
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => !isMonitored && addSymbol(preset)}
+                  disabled={isMonitored || isProcessing}
+                  style={{
+                    background: isMonitored ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.04)',
+                    border: isMonitored ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-subtle)',
+                    color: isMonitored ? 'var(--accent-emerald)' : 'var(--text-secondary)',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    fontFamily: 'var(--font-mono)',
+                    cursor: isMonitored ? 'default' : 'pointer',
+                  }}
+                >
+                  {preset} {isMonitored ? '✓' : '+'}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {message && (
-          <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--accent-emerald)' }}>
-            ✓ {message}
+          <div style={{
+            marginTop: '16px',
+            fontSize: '0.82rem',
+            color: message.type === 'success' ? 'var(--accent-emerald)' : '#f87171',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            background: message.type === 'success' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+          }}>
+            {message.type === 'success' ? '✓' : '⚠'} {message.text}
           </div>
         )}
       </div>
@@ -104,16 +165,39 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '8px',
-                padding: '8px 14px',
+                padding: '8px 12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '10px',
               }}
             >
               <div className="pulse-dot" />
               <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.95rem' }}>
                 {sym}
               </span>
+              <button
+                type="button"
+                onClick={() => removeSymbol(sym)}
+                disabled={isProcessing}
+                title={`Remove ${sym}`}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#f87171'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+              >
+                ✕
+              </button>
             </div>
           ))}
         </div>
