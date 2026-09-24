@@ -43,10 +43,16 @@ jobs:
           SECTORS_API_KEY: ${{ secrets.SECTORS_API_KEY }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APP_BASE_URL: ${{ vars.APP_BASE_URL }}
           MAX_FILINGS_PAGES_PER_RUN: ${{ vars.MAX_FILINGS_PAGES_PER_RUN || '3' }}
+          MAX_SECTORS_API_ATTEMPTS_PER_RUN: ${{ vars.MAX_SECTORS_API_ATTEMPTS_PER_RUN || '15' }}
+          START_DATE: ${{ inputs.start_date }}
+          END_DATE: ${{ inputs.end_date }}
         run: |
-          if [ -n "${{ github.event.inputs.start_date }}" ] && [ -n "${{ github.event.inputs.end_date }}" ]; then
-            npm run monitor -- "${{ github.event.inputs.start_date }}" "${{ github.event.inputs.end_date }}"
+          if [ -n "$START_DATE" ] && [ -n "$END_DATE" ]; then
+            npm run monitor -- "$START_DATE" "$END_DATE"
           else
             npm run monitor
           fi

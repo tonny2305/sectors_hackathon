@@ -38,7 +38,8 @@ async function main() {
     throw new Error('MISSING_SERVER_CREDENTIALS');
   }
 
-  const triggerType = process.env.GITHUB_ACTIONS ? 'SCHEDULED_CRON' : 'MANUAL_CLI';
+  const triggerType = process.env.GITHUB_EVENT_NAME === 'schedule' ? 'SCHEDULED_CRON'
+    : process.env.GITHUB_EVENT_NAME === 'workflow_dispatch' ? 'MANUAL_DISPATCH' : 'MANUAL_CLI';
   const store = new Store(url, serviceKey);
 
   console.log(`Starting autonomous monitoring cycle (${triggerType})...`);
@@ -46,7 +47,7 @@ async function main() {
     startDate,
     endDate,
     maxPages,
-    triggerType: triggerType as 'SCHEDULED_CRON' | 'MANUAL_CLI',
+    triggerType,
   });
 
   console.log(

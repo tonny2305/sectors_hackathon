@@ -11,7 +11,7 @@ export async function GET() {
 
   let dbStatus = 'UNCONFIGURED';
   let activeSymbolsCount = 0;
-  let totalRunsCount = 0;
+  let scheduledRunsCount = 0;
 
   if (url && key) {
     try {
@@ -20,7 +20,7 @@ export async function GET() {
           headers: { apikey: key, Authorization: `Bearer ${key}` },
           cache: 'no-store',
         }),
-        fetch(`${url}/rest/v1/automation_runs?select=id&limit=1`, {
+        fetch(`${url}/rest/v1/automation_runs?trigger_type=eq.SCHEDULED_CRON&select=id&limit=1`, {
           headers: { apikey: key, Authorization: `Bearer ${key}` },
           cache: 'no-store',
         }),
@@ -30,6 +30,8 @@ export async function GET() {
         dbStatus = 'CONNECTED';
         const symbols = await wlRes.json();
         activeSymbolsCount = Array.isArray(symbols) ? symbols.length : 0;
+        const scheduled = await runsRes.json();
+        scheduledRunsCount = Array.isArray(scheduled) ? scheduled.length : 0;
       } else {
         dbStatus = 'DEGRADED';
       }
@@ -39,7 +41,7 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    status: dbStatus === 'CONNECTED' || (!url && !key) ? 'HEALTHY' : 'DEGRADED',
+    status: dbStatus === 'CONNECTED' && sectorsConfigured && activeSymbolsCount > 0 ? 'HEALTHY' : 'DEGRADED',
     timestamp: new Date().toISOString(),
     engineVersion: 'v2.0.0-materiality-sentinel',
     configuration: {
@@ -50,7 +52,7 @@ export async function GET() {
     },
     monitoring: {
       activeWatchlistCount: activeSymbolsCount,
-      scheduler: 'WEEKDAY_CRON (10:30, 12:30, 15:30, 18:30 WIB)',
+      scheduler: scheduledRunsCount > 0 ? 'SCHEDULED_RUN_RECORDED' : 'UNVERIFIED',
       maxPagesCap: Number(process.env.MAX_FILINGS_PAGES_PER_RUN || 3),
     },
   });
