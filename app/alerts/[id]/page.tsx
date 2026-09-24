@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import HolderTimeline from '../../../components/HolderTimeline.tsx';
+import HolderTimeline from '../../../components/HolderTimeline';
 import type { PriorHolderEvent, MaterialityState } from '../../../lib/materiality/types.ts';
 
 async function getAlertDetail(id: string) {

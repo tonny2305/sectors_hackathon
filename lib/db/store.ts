@@ -239,4 +239,13 @@ export class Store {
       throw error;
     }
   }
+
+  async updateAlertDeliveryStatus(filingId: string, status: 'SENT' | 'FAILED', messageId?: string): Promise<void> {
+    z.string().uuid().parse(filingId);
+    await this.request(`alerts?filing_id=eq.${filingId}`, 'PATCH', {
+      delivery_status: status,
+      sent_at: new Date().toISOString(),
+      external_message_id: messageId ?? null,
+    });
+  }
 }

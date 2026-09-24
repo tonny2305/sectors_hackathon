@@ -5,6 +5,7 @@ import { Store, StoreError } from '../db/store.ts';
 import { normalizeFiling, normalizeSymbol, type OwnershipEvent } from '../sectors/normalize.ts';
 import { evaluateEvent } from '../materiality/engine.ts';
 import { computeAttentionMetrics } from '../materiality/metrics.ts';
+import { formatTelegramMessage, sendTelegramNotification } from '../alerts/telegram.ts';
 import type { AttentionMetrics, MaterialityEvaluation } from '../materiality/types.ts';
 import type { DailyRecord } from '../sectors/schemas.ts';
 
@@ -163,9 +164,37 @@ export async function runMonitoringCycle(
       // 8. Persist evaluation
       const evalId = await store.saveEvaluation(dbId, evaluation);
 
-      // 9. Queue alert if MATERIAL or STRUCTURAL
+      // 9. Queue & Dispatch alert if MATERIAL or STRUCTURAL
       if (evaluation.materialityState === 'MATERIAL' || evaluation.materialityState === 'STRUCTURAL') {
-        await store.queueAlert(dbId, evalId, 'telegram');
+        const isQueued = await store.queueAlert(dbId, evalId, 'telegram');
+
+        // If newly queued and Telegram credentials are present, send notification
+        const botToken = process.env.TELEGRAM_BOT_TOKEN;
+        const chatId = process.env.TELEGRAM_CHAT_ID;
+        if (isQueued && botToken && chatId) {
+          try {
+            const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+            const message = formatTelegramMessage({
+              event,
+              evaluation,
+              appBaseUrl,
+              filingId: dbId,
+            });
+            const sendRes = await sendTelegramNotification(
+              botToken,
+              chatId,
+              message,
+              options.fetch,
+            );
+            if (sendRes.ok) {
+              await store.updateAlertDeliveryStatus(dbId, 'SENT', sendRes.messageId);
+            } else {
+              await store.updateAlertDeliveryStatus(dbId, 'FAILED');
+            }
+          } catch {
+            await store.updateAlertDeliveryStatus(dbId, 'FAILED');
+          }
+        }
       }
 
       // 10. Update Holder Activity State Table

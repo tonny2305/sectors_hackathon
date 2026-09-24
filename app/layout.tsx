@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import './globals.css';
-import Navbar from '../components/Navbar.tsx';
-import Footer from '../components/Footer.tsx';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 export const metadata = {
   title: 'Ownership Materiality Sentinel — Track 2 Automation',

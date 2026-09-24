@@ -1,4 +1,4 @@
-import WatchlistClient from './WatchlistClient.tsx';
+import WatchlistClient from './WatchlistClient';
 
 async function getWatchlist() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
