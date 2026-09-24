@@ -23,14 +23,18 @@ export default function Navbar() {
       top: 0,
       zIndex: 100,
     }}>
-      <div className="container" style={{
+      <div className="container navbar-container" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: '70px',
+        minHeight: '70px',
+        paddingTop: '12px',
+        paddingBottom: '12px',
+        gap: '16px',
+        flexWrap: 'wrap',
       }}>
         {/* Brand */}
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
           <div style={{
             width: '36px',
             height: '36px',
@@ -57,7 +61,7 @@ export default function Navbar() {
         </Link>
 
         {/* Navigation Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <nav className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           {links.map(link => {
             const isActive = pathname === link.href;
             return (
@@ -65,14 +69,15 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 style={{
-                  padding: '8px 14px',
+                  padding: '7px 12px',
                   borderRadius: '6px',
-                  fontSize: '0.875rem',
+                  fontSize: '0.85rem',
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+                  background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                   border: isActive ? '1px solid var(--border-active)' : '1px solid transparent',
                   transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {link.label}
@@ -82,7 +87,7 @@ export default function Navbar() {
         </nav>
 
         {/* Status Indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
           <div className="badge badge-active" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div className="pulse-dot" />
             AUTONOMOUS ACTIVE

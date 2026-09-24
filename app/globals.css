@@ -322,3 +322,36 @@ tr:hover td {
   50% { transform: scale(1.15); opacity: 1; }
   100% { transform: scale(0.95); opacity: 0.8; }
 }
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .navbar-container {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .nav-links {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .grid-kpi {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .kpi-value {
+    font-size: 1.85rem;
+  }
+
+  .glass-panel {
+    padding: 16px;
+  }
+}
+
