@@ -54,7 +54,9 @@ Coverage includes contracts, optional nulls, malformed data, invalid pagination,
 
 ## F. Security
 
-No credential was supplied or intentionally written/committed. `.env` and `.env.*` are ignored except the names-only `.env.example`; preflight output is ignored. API and database keys stay in private server modules guarded with `server-only`. Browser roles have no database table/RPC access; all eight tables enable RLS. Logs contain fixed error codes, never response bodies or authorization headers. The security tests verify these boundaries. Use process environment locally and GitHub Secrets for the later scheduled worker.
+No credential was supplied or intentionally written/committed. A final scan passed across 33 Git-history blobs, 29 tracked files, and 9 browser build files: no private-key/JWT/Supabase-secret patterns were detected, and no server credential variable names or test canary appeared in browser output. No real environment secret was available for value comparison; pattern scanning cannot prove the absence of every arbitrary secret format.
+
+`.env` and `.env.*` are ignored except the names-only `.env.example`; preflight output is ignored. API and database keys stay in private server modules guarded with `server-only`. Browser roles have no database table/RPC access; all eight tables enable RLS. Logs contain fixed error codes, never response bodies or authorization headers. The security tests verify these boundaries. Use process environment locally and GitHub Secrets for the later scheduled worker.
 
 ## G. Deviations and limits
 
