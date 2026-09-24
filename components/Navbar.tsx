@@ -35,21 +35,18 @@ export default function Navbar() {
       }}>
         {/* Brand */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'linear-gradient(135deg, #0284c7 0%, #8b5cf6 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 800,
-            fontSize: '1.2rem',
-            color: '#fff',
-            boxShadow: '0 0 15px rgba(2, 132, 199, 0.4)',
-          }}>
-            S
-          </div>
+          <img
+            src="/icon.png"
+            alt="Sectors Sentinel Logo"
+            width={38}
+            height={38}
+            style={{
+              borderRadius: '8px',
+              boxShadow: '0 0 15px rgba(2, 132, 199, 0.4)',
+              display: 'block',
+              objectFit: 'contain',
+            }}
+          />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em' }}>
               SECTORS <span style={{ color: '#38bdf8' }}>SENTINEL</span>

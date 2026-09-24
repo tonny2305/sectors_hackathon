@@ -1,7 +1,7 @@
 <!-- prettier-ignore -->
 <div align="center">
 
-<div style="display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; border-radius: 16px; background: linear-gradient(135deg, #0284c7 0%, #8b5cf6 100%); font-weight: 800; font-size: 2.2rem; color: #ffffff; box-shadow: 0 0 25px rgba(2, 132, 199, 0.4); margin-bottom: 12px;">S</div>
+<img src="./public/icon.png" alt="Sectors Sentinel Logo" width="80" height="80" style="border-radius: 18px; box-shadow: 0 0 25px rgba(2, 132, 199, 0.4); margin-bottom: 12px;" />
 
 # Autonomous Ownership Materiality Sentinel
 
