@@ -62,11 +62,11 @@ export default async function DashboardPage() {
 
   const duplicateAlertRate = activeRun?.duplicate_alert_rate != null
     ? `${(Number(activeRun.duplicate_alert_rate) * 100).toFixed(0)}%`
-    : '0%';
+    : 'N/A';
 
   const explainabilityCoverage = activeRun?.explainability_coverage != null
     ? `${(Number(activeRun.explainability_coverage) * 100).toFixed(0)}%`
-    : '100%';
+    : 'N/A';
 
   const totalScanned = activeRun?.records_scanned ?? (runs.length > 0 ? runs[0].records_scanned : 0);
   const suppressedCount = activeRun?.suppressed_from_push_count ?? (runs.length > 0 ? runs[0].suppressed_from_push_count : 0);
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
             <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               Attention Intelligence Dashboard
             </h1>
-            <span className="badge badge-active">AUTONOMOUS ACTIVE</span>
+            <span className="badge badge-active">{runs.some((r: any) => r.trigger_type === 'SCHEDULED_CRON') ? 'SCHEDULED RUN RECORDED' : 'SCHEDULE UNVERIFIED'}</span>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '680px' }}>
             Autonomous materiality layer filtering noise from Indonesian ownership disclosures. Interrupts equity researchers only when filings cross transparent quantitative & historical thresholds.
@@ -99,14 +99,14 @@ export default async function DashboardPage() {
           <div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>LAST RUN</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {latestRun?.finished_at ? new Date(latestRun.finished_at).toLocaleTimeString('id-ID') : '18:30 WIB'}
+              {latestRun?.finished_at ? new Date(latestRun.finished_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) : 'No run recorded'}
             </div>
           </div>
           <div style={{ width: '1px', height: '24px', background: 'var(--border-subtle)' }} />
           <div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>NEXT EXPECTED RUN</div>
             <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--accent-cyan)' }}>
-              Tomorrow 10:30 WIB
+              See scheduler configuration
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@ export default async function DashboardPage() {
           <div className="kpi-title">Interruption Reduction</div>
           <div className="kpi-value" style={{ color: '#38bdf8' }}>{interruptionReduction}</div>
           <div className="kpi-subtext">
-            <strong>{suppressedCount} of {totalScanned}</strong> disclosures safely suppressed without interrupting human attention.
+            <strong>{suppressedCount} of {activeRun?.eligible_new_filings ?? 0}</strong> evaluated watchlist events suppressed from push.
           </div>
         </div>
 
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
           <div className="kpi-title">Duplicate Alert Rate</div>
           <div className="kpi-value" style={{ color: '#10b981' }}>{duplicateAlertRate}</div>
           <div className="kpi-subtext">
-            0 repeated alerts sent across polling cycles (strict SHA-256 fingerprinting).
+            Rate from recorded external deliveries; N/A until measured.
           </div>
         </div>
 
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
           <div className="kpi-title">Explainability Coverage</div>
           <div className="kpi-value" style={{ color: '#fbbf24' }}>{explainabilityCoverage}</div>
           <div className="kpi-subtext">
-            100% of delivered alerts backed by Sectors provenance and deterministic reason codes.
+            Coverage from delivered alerts with source, timestamp, quantitative evidence, and reason codes.
           </div>
         </div>
 
@@ -182,23 +182,23 @@ export default async function DashboardPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '1rem', color: '#f8fafc' }}>
-                          {filing?.symbol || 'NSSS.JK'}
+                          {filing?.symbol || 'Unknown symbol'}
                         </span>
                         <span className={`badge badge-${state.toLowerCase()}`}>
                           {state}
                         </span>
                       </div>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700, color: (deltaPp ?? 0) >= 0 ? 'var(--accent-emerald)' : '#f87171' }}>
-                        {deltaSign}{deltaPp ?? '2.56'} pp
+                        {deltaPp == null ? 'N/A' : `${deltaSign}${deltaPp} pp`}
                       </span>
                     </div>
 
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                      {filing?.holder_name || 'Samuel Sekuritas Indonesia'}
+                      {filing?.holder_name || 'Unknown holder'}
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                      {(item.reason_codes_json || ['LARGE_STAKE_MOVE_GE_1PP']).map((rc: string) => (
+                      {(item.reason_codes_json || []).map((rc: string) => (
                         <span key={rc} className="reason-pill">{rc}</span>
                       ))}
                     </div>
@@ -206,35 +206,7 @@ export default async function DashboardPage() {
                 );
               })
             ) : (
-              /* Fallback Showcase Card if DB empty */
-              <Link
-                href="/alerts"
-                style={{
-                  display: 'block',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '8px',
-                  padding: '14px 16px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 800, fontFamily: 'var(--font-mono)', fontSize: '1rem' }}>NSSS.JK</span>
-                    <span className="badge badge-material">MATERIAL</span>
-                  </div>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                    +2.56 pp
-                  </span>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                  Samuel Sekuritas Indonesia (40.17% ➔ 42.73%)
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                  <span className="reason-pill">LARGE_STAKE_MOVE_GE_1PP</span>
-                  <span className="reason-pill">REPEATED_SAME_DIRECTION_GE_3</span>
-                  <span className="reason-pill">ESCALATED_BY_HOLDER_HISTORY</span>
-                </div>
-              </Link>
+              <p>No material events have been evaluated yet.</p>
             )}
           </div>
         </div>
@@ -265,15 +237,15 @@ export default async function DashboardPage() {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.9rem' }}>
-                        {filing?.symbol || 'BBCA.JK'}
+                        {filing?.symbol || 'Unknown symbol'}
                       </span>
                       <span className={`badge badge-${state.toLowerCase()}`}>{state}</span>
                     </div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                      {filing?.holder_name || 'Routine Holding Adjuster'}
+                      {filing?.holder_name || 'Unknown holder'}
                     </div>
                     <div>
-                      {(item.suppression_reason_codes_json || ['SMALL_ABSOLUTE_CHANGE', 'BELOW_PUSH_THRESHOLD']).map((sc: string) => (
+                      {(item.suppression_reason_codes_json || []).map((sc: string) => (
                         <span key={sc} className="suppression-pill">{sc}</span>
                       ))}
                     </div>
@@ -281,27 +253,7 @@ export default async function DashboardPage() {
                 );
               })
             ) : (
-              <div
-                style={{
-                  background: 'rgba(255, 255, 255, 0.01)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '0.9rem' }}>BBCA.JK</span>
-                  <span className="badge badge-silent">SILENT</span>
-                </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  PT Dwimuria Investama Andalan (+0.01 pp)
-                </div>
-                <div>
-                  <span className="suppression-pill">SMALL_ABSOLUTE_CHANGE</span>
-                  <span className="suppression-pill">NO_REPEAT_PATTERN</span>
-                  <span className="suppression-pill">BELOW_PUSH_THRESHOLD</span>
-                </div>
-              </div>
+<p>No suppressed events have been evaluated yet.</p>
             )}
           </div>
         </div>
@@ -347,10 +299,10 @@ export default async function DashboardPage() {
                     <td style={{ fontFamily: 'var(--font-mono)' }}>{r.records_scanned}</td>
                     <td style={{ fontFamily: 'var(--font-mono)' }}>{r.new_events}</td>
                     <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                      {r.suppressed_from_push_count ?? 0}
+                      {r.suppressed_from_push_count ?? 'N/A'}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--material-text)' }}>
-                      {r.alerts_sent ?? 0}
+                      {r.alerts_sent ?? 'N/A'}
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
                       {r.interruption_reduction != null ? `${(Number(r.interruption_reduction) * 100).toFixed(1)}%` : 'N/A'}
@@ -361,41 +313,7 @@ export default async function DashboardPage() {
                   </tr>
                 ))
               ) : (
-                <>
-                  <tr>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>18:30 WIB</td>
-                    <td><span className="reason-pill">SCHEDULED_CRON</span></td>
-                    <td><span className="badge badge-active">COMPLETE</span></td>
-                    <td>42</td>
-                    <td>4</td>
-                    <td>4</td>
-                    <td>0</td>
-                    <td>100.0%</td>
-                    <td>1 cr</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>15:30 WIB</td>
-                    <td><span className="reason-pill">SCHEDULED_CRON</span></td>
-                    <td><span className="badge badge-active">COMPLETE</span></td>
-                    <td>37</td>
-                    <td>7</td>
-                    <td>6</td>
-                    <td>1</td>
-                    <td>85.7%</td>
-                    <td>2 cr</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>12:30 WIB</td>
-                    <td><span className="reason-pill">SCHEDULED_CRON</span></td>
-                    <td><span className="badge badge-active">COMPLETE</span></td>
-                    <td>30</td>
-                    <td>11</td>
-                    <td>11</td>
-                    <td>0</td>
-                    <td>100.0%</td>
-                    <td>1 cr</td>
-                  </tr>
-                </>
+<tr><td colSpan={9}>No unattended run evidence has been recorded.</td></tr>
               )}
             </tbody>
           </table>

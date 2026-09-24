@@ -86,33 +86,7 @@ export default async function AlertsPage() {
             );
           })
         ) : (
-          /* Showcase case study */
-          <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-            <div style={{ flex: '1 1 320px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.2rem' }}>NSSS.JK</span>
-                <span className="badge badge-material">MATERIAL</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>2026-07-09</span>
-              </div>
-              <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>
-                Samuel Sekuritas Indonesia
-              </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                Action: <strong style={{ color: 'var(--accent-emerald)' }}>BUY</strong>
-                {' '}• Stake Shift: <strong>40.17% ➔ 42.73%</strong> (+2.56 pp) • IDR 351,225,097,500
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                <span className="reason-pill">LARGE_STAKE_MOVE_GE_1PP</span>
-                <span className="reason-pill">REPEATED_SAME_DIRECTION_GE_3</span>
-                <span className="reason-pill">ESCALATED_BY_HOLDER_HISTORY</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-              <Link href="/alerts/documented-nsss" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '8px 14px' }}>
-                Inspect Evidence & Timeline &rarr;
-              </Link>
-            </div>
-          </div>
+          <p>No material events have been evaluated yet.</p>
         )}
       </div>
     </main>

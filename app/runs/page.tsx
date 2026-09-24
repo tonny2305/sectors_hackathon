@@ -28,7 +28,7 @@ export default async function RunsPage() {
           <span className="badge badge-active">AUDIT LOG</span>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Complete record of unattended scheduled cycles and manual triggers executed by GitHub Actions.
+          Recorded monitoring cycles, including scheduled, manual, and verification runs.
         </p>
       </div>
 
@@ -69,10 +69,10 @@ export default async function RunsPage() {
                   <td style={{ fontFamily: 'var(--font-mono)' }}>{r.pages_fetched}</td>
                   <td style={{ fontFamily: 'var(--font-mono)' }}>{r.records_scanned}</td>
                   <td style={{ fontFamily: 'var(--font-mono)' }}>{r.new_events}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{r.silent_count ?? 0}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#60a5fa' }}>{r.watch_count ?? 0}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{r.material_count ?? 0}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#c084fc' }}>{r.structural_count ?? 0}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{r.silent_count ?? 'N/A'}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: '#60a5fa' }}>{r.watch_count ?? 'N/A'}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{r.material_count ?? 'N/A'}</td>
+                  <td style={{ fontFamily: 'var(--font-mono)', color: '#c084fc' }}>{r.structural_count ?? 'N/A'}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
                     {r.interruption_reduction != null ? `${(Number(r.interruption_reduction) * 100).toFixed(1)}%` : 'N/A'}
                   </td>
@@ -81,21 +81,7 @@ export default async function RunsPage() {
                 </tr>
               ))
             ) : (
-              <tr>
-                <td style={{ fontFamily: 'var(--font-mono)' }}>24 Sep 2026, 18:30</td>
-                <td><span className="reason-pill">SCHEDULED_CRON</span></td>
-                <td><span className="badge badge-active">COMPLETE</span></td>
-                <td>1</td>
-                <td>42</td>
-                <td>4</td>
-                <td>4</td>
-                <td>0</td>
-                <td>0</td>
-                <td>0</td>
-                <td>100.0%</td>
-                <td>1 cr</td>
-                <td>420 ms</td>
-              </tr>
+<tr><td colSpan={12}>No runs have been recorded yet.</td></tr>
             )}
           </tbody>
         </table>

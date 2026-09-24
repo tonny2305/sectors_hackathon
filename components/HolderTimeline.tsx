@@ -15,6 +15,7 @@ export default function HolderTimeline({
   holderName,
   events,
   currentEvent,
+  escalatedFromPriorState,
 }: {
   symbol: string;
   holderName: string;
@@ -26,6 +27,7 @@ export default function HolderTimeline({
     ownership_delta_pp: number | null;
     materiality_state: MaterialityState;
   };
+  escalatedFromPriorState: boolean;
 }) {
   // Combine past events + current event sorted chronologically (oldest to newest)
   const allEvents: TimelineItem[] = [
@@ -54,7 +56,7 @@ export default function HolderTimeline({
 
       <div className="timeline" style={{ paddingLeft: '24px' }}>
         {allEvents.map((item, index) => {
-          const state = item.materiality_state || 'SILENT';
+          const state = item.materiality_state ?? 'UNVERIFIED';
           const dotClass = state === 'MATERIAL' || state === 'STRUCTURAL'
             ? 'material'
             : state === 'WATCH'
@@ -64,7 +66,7 @@ export default function HolderTimeline({
           const deltaSign = (item.ownership_delta_pp ?? 0) >= 0 ? '+' : '';
           const deltaText = item.ownership_delta_pp !== null
             ? `${deltaSign}${item.ownership_delta_pp} pp`
-            : 'Unchanged';
+            : 'Unknown change';
 
           return (
             <div key={item.id || index} className="timeline-item">
@@ -122,7 +124,7 @@ export default function HolderTimeline({
         })}
       </div>
 
-      {allEvents.length >= 2 && (
+      {escalatedFromPriorState && (
         <div style={{
           marginTop: '20px',
           padding: '12px 16px',
@@ -132,7 +134,7 @@ export default function HolderTimeline({
           fontSize: '0.82rem',
           color: 'var(--material-text)',
         }}>
-          💡 <strong>Stateful Escalation Proof:</strong> Evaluated {allEvents.length} sequential disclosures within lookback window. Accumulated behavior escalated transaction triage from routine holding adjustment to actionable research priority.
+          <strong>Escalated by holder history:</strong> This event crossed a repeated-behavior rule. Review the prior events and reason codes above.
         </div>
       )}
     </div>

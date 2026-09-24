@@ -1,88 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import HolderTimeline from '../../../components/HolderTimeline';
+import { z } from 'zod';
 import type { PriorHolderEvent, MaterialityState } from '../../../lib/materiality/types.ts';
 
 async function getAlertDetail(id: string) {
+  if (!z.uuid().safeParse(id).success) notFound();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  // Documented NSSS case study fallback
-  if (id === 'documented-nsss' || !url || !key) {
-    return {
-      filing: {
-        id: 'documented-nsss',
-        symbol: 'NSSS.JK',
-        source_url: 'https://idx.co.id/filing/sample-nsss',
-        source_timestamp: '2026-07-09T14:29:39',
-        source_date: '2026-07-09',
-        holder_name: 'Samuel Sekuritas Indonesia',
-        normalized_holder_name: 'samuel sekuritas indonesia',
-        holder_type: 'institution',
-        transaction_type: 'buy' as const,
-        holding_before: 9559919000,
-        holding_after: 10169179100,
-        shares_transacted: 609260100,
-        ownership_before_pct: 40.17,
-        ownership_after_pct: 42.73,
-        ownership_delta_pp: 2.56,
-        transaction_value_idr: 351225097500,
-        raw_payload_json: {
-          symbol: 'NSSS.JK',
-          timestamp: '2026-07-09T14:29:39',
-          holder_name: 'Samuel Sekuritas Indonesia',
-          share_percentage_before: 40.17,
-          share_percentage_after: 42.73,
-          transaction_value: 351225097500,
-          shares_transacted: 609260100,
-        },
-      },
-      evaluation: {
-        materiality_state: 'MATERIAL' as MaterialityState,
-        reason_codes_json: ['LARGE_STAKE_MOVE_GE_1PP', 'REPEATED_SAME_DIRECTION_GE_3', 'ESCALATED_BY_HOLDER_HISTORY'],
-        suppression_reason_codes_json: [],
-        relative_position_change: 0.063731,
-        repeat_count_180d: 5,
-        cumulative_same_direction_delta_pp_180d: 12.73,
-        escalated_from_prior_state: true,
-        engine_version: 'v2.0.0-materiality-sentinel',
-      },
-      priorEvents: [
-        {
-          id: 'p-1',
-          source_timestamp: '2026-02-15T10:00:00',
-          source_date: '2026-02-15',
-          transaction_type: 'buy' as const,
-          ownership_delta_pp: 2.50,
-          materiality_state: 'MATERIAL' as MaterialityState,
-        },
-        {
-          id: 'p-2',
-          source_timestamp: '2026-03-20T10:00:00',
-          source_date: '2026-03-20',
-          transaction_type: 'buy' as const,
-          ownership_delta_pp: 2.50,
-          materiality_state: 'MATERIAL' as MaterialityState,
-        },
-        {
-          id: 'p-3',
-          source_timestamp: '2026-04-25T10:00:00',
-          source_date: '2026-04-25',
-          transaction_type: 'buy' as const,
-          ownership_delta_pp: 2.50,
-          materiality_state: 'MATERIAL' as MaterialityState,
-        },
-        {
-          id: 'p-4',
-          source_timestamp: '2026-06-05T10:00:00',
-          source_date: '2026-06-05',
-          transaction_type: 'buy' as const,
-          ownership_delta_pp: 2.67,
-          materiality_state: 'MATERIAL' as MaterialityState,
-        },
-      ] as PriorHolderEvent[],
-    };
-  }
+  if (!url || !key) notFound();
 
   try {
     const [filingRes, evalRes] = await Promise.all([
@@ -104,17 +31,23 @@ async function getAlertDetail(id: string) {
     }
 
     const filing = filings[0];
-    const evaluation = evals[0] || {};
+    const evaluation = evals[0];
+    if (!evaluation) notFound();
 
     // Get prior events for timeline
+    const startDate = new Date(Date.parse(filing.source_date) - 180 * 86_400_000).toISOString().slice(0, 10);
     const priorRes = await fetch(
-      `${url}/rest/v1/filings?symbol=eq.${encodeURIComponent(filing.symbol)}&normalized_holder_name=eq.${encodeURIComponent(filing.normalized_holder_name)}&source_date=lt.${filing.source_date}&select=id,source_timestamp,source_date,transaction_type,ownership_delta_pp&order=source_date.desc&limit=20`,
+      `${url}/rest/v1/filings?symbol=eq.${encodeURIComponent(filing.symbol)}&normalized_holder_name=eq.${encodeURIComponent(filing.normalized_holder_name)}&source_date=gte.${startDate}&source_timestamp=lt.${encodeURIComponent(filing.source_timestamp)}&select=id,source_timestamp,source_date,transaction_type,ownership_delta_pp,event_evaluations(materiality_state,created_at)&order=source_timestamp.desc&limit=100`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         cache: 'no-store',
       },
     );
-    const priorEvents = priorRes.ok ? await priorRes.json() : [];
+    const rows = priorRes.ok ? await priorRes.json() : [];
+    const priorEvents = rows.map((row: any) => {
+      const { event_evaluations, ...event } = row;
+      return { ...event, materiality_state: event_evaluations?.sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))[0]?.materiality_state };
+    });
 
     return {
       filing,
@@ -130,7 +63,7 @@ export default async function AlertDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const { filing, evaluation, priorEvents } = await getAlertDetail(id);
 
-  const state = evaluation.materiality_state || 'MATERIAL';
+  const state = evaluation.materiality_state;
   const deltaPp = filing.ownership_delta_pp;
   const deltaSign = (deltaPp ?? 0) >= 0 ? '+' : '';
 
@@ -157,7 +90,7 @@ export default async function AlertDetailPage({ params }: { params: Promise<{ id
               {filing.holder_name}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Holder Type: <strong style={{ color: 'var(--text-secondary)' }}>{filing.holder_type || 'Institution'}</strong>
+              Holder Type: <strong style={{ color: 'var(--text-secondary)' }}>{filing.holder_type ?? 'Unknown'}</strong>
               {' '}• Source Date: <strong style={{ color: 'var(--text-secondary)' }}>{filing.source_date}</strong>
             </div>
           </div>
@@ -189,19 +122,19 @@ export default async function AlertDetailPage({ params }: { params: Promise<{ id
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Shares Transacted</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                {filing.shares_transacted ? Number(filing.shares_transacted).toLocaleString('en-US') : 'N/A'}
+                {filing.shares_transacted != null ? Number(filing.shares_transacted).toLocaleString('en-US') : 'N/A'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Transaction Value</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                {filing.transaction_value_idr ? `IDR ${Number(filing.transaction_value_idr).toLocaleString('id-ID')}` : 'N/A'}
+                {filing.transaction_value_idr != null ? `IDR ${Number(filing.transaction_value_idr).toLocaleString('id-ID')}` : 'N/A'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Holding Before / After</span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
-                {filing.holding_before ? Number(filing.holding_before).toLocaleString('en-US') : '0'} ➔ {filing.holding_after ? Number(filing.holding_after).toLocaleString('en-US') : '0'}
+                {filing.holding_before != null ? Number(filing.holding_before).toLocaleString('en-US') : 'N/A'} ➔ {filing.holding_after != null ? Number(filing.holding_after).toLocaleString('en-US') : 'N/A'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -224,6 +157,13 @@ export default async function AlertDetailPage({ params }: { params: Promise<{ id
                 <span key={rc} className="reason-pill">{rc}</span>
               ))}
             </div>
+            {(state === 'SILENT' || state === 'WATCH') && (
+              <div style={{ marginTop: '16px' }}>
+                <strong>No external alert: {state}</strong>
+                <p>Enrichment {evaluation.enrichment_skipped ? 'skipped' : 'attempted'}; context {evaluation.context_unavailable ? 'unavailable' : 'available'}.</p>
+                {(evaluation.suppression_reason_codes_json || []).map((code: string) => <span key={code} className="suppression-pill">{code}</span>)}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
@@ -258,6 +198,7 @@ export default async function AlertDetailPage({ params }: { params: Promise<{ id
           ownership_delta_pp: filing.ownership_delta_pp,
           materiality_state: state,
         }}
+        escalatedFromPriorState={evaluation.escalated_from_prior_state === true}
       />
     </main>
   );

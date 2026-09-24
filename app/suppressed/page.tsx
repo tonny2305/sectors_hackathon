@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 async function getSuppressedEvents() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -76,7 +78,7 @@ export default async function SuppressedLogPage() {
                       </div>
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
-                      {delta != null ? `${deltaSign}${delta} pp` : '0.00 pp'}
+                      {delta != null ? `${deltaSign}${delta} pp` : 'N/A'}
                     </td>
                     <td>
                       <span className={`badge badge-${state.toLowerCase()}`}>{state}</span>
@@ -93,46 +95,13 @@ export default async function SuppressedLogPage() {
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {filing?.source_timestamp}
+                      {filing?.id && <Link href={`/alerts/${filing.id}`}> Inspect evidence</Link>}
                     </td>
                   </tr>
                 );
               })
             ) : (
-              /* Fallback rows */
-              <>
-                <tr>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800 }}>BBCA.JK</td>
-                  <td>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>PT Dwimuria Investama Andalan</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>BUY</div>
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)' }}>+0.01 pp</td>
-                  <td><span className="badge badge-silent">SILENT</span></td>
-                  <td>
-                    <span className="suppression-pill">SMALL_ABSOLUTE_CHANGE</span>
-                    <span className="suppression-pill">NO_REPEAT_PATTERN</span>
-                    <span className="suppression-pill">BELOW_PUSH_THRESHOLD</span>
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>SKIPPED (0 cr)</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>2026-09-24T11:00:00</td>
-                </tr>
-                <tr>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 800 }}>TLKM.JK</td>
-                  <td>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Government of Indonesia</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>BUY</div>
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)' }}>+0.02 pp</td>
-                  <td><span className="badge badge-silent">SILENT</span></td>
-                  <td>
-                    <span className="suppression-pill">SMALL_ABSOLUTE_CHANGE</span>
-                    <span className="suppression-pill">NO_REPEAT_PATTERN</span>
-                    <span className="suppression-pill">BELOW_PUSH_THRESHOLD</span>
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>SKIPPED (0 cr)</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>2026-09-24T09:30:00</td>
-                </tr>
-              </>
+              <tr><td colSpan={7}>No suppressed events have been evaluated yet.</td></tr>
             )}
           </tbody>
         </table>
