@@ -1,0 +1,52 @@
+name: Autonomous Ownership Materiality Sentinel Schedule
+
+on:
+  schedule:
+    # Weekday market cycles in Jakarta time (WIB UTC+7):
+    # 10:30 WIB -> 03:30 UTC
+    # 12:30 WIB -> 05:30 UTC
+    # 15:30 WIB -> 08:30 UTC
+    # 18:30 WIB -> 11:30 UTC
+    - cron: '30 3,5,8,11 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'Optional Start Date (YYYY-MM-DD)'
+        required: false
+      end_date:
+        description: 'Optional End Date (YYYY-MM-DD)'
+        required: false
+
+concurrency:
+  group: sectors-sentinel-monitoring
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Run Ownership Materiality Monitoring Cycle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Sentinel Monitor Worker
+        env:
+          SECTORS_API_KEY: ${{ secrets.SECTORS_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MAX_FILINGS_PAGES_PER_RUN: ${{ vars.MAX_FILINGS_PAGES_PER_RUN || '3' }}
+        run: |
+          if [ -n "${{ github.event.inputs.start_date }}" ] && [ -n "${{ github.event.inputs.end_date }}" ]; then
+            npm run monitor -- "${{ github.event.inputs.start_date }}" "${{ github.event.inputs.end_date }}"
+          else
+            npm run monitor
+          fi

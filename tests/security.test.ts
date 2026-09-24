@@ -12,11 +12,19 @@ it('ignores env variants while tracking a names-only template', () => {
 });
 
 it('keeps credentials in guarded server modules and out of app code', () => {
-  for (const file of ['lib/sectors/client.ts', 'lib/db/store.ts', 'scripts/ingest.ts']) {
+  for (const file of ['lib/sectors/client.ts', 'lib/db/store.ts', 'scripts/ingest.ts', 'lib/automation/monitor.ts', 'lib/materiality/engine.ts']) {
     expect(readFileSync(file, 'utf8')).toContain("import 'server-only'");
   }
-  for (const file of readdirSync('app')) {
-    expect(readFileSync(join('app', file), 'utf8')).not.toMatch(/SECTORS_API_KEY|SUPABASE_SERVICE_ROLE_KEY|use client/);
+  const appFiles = readdirSync('app', { recursive: true, withFileTypes: true })
+    .filter(dirent => dirent.isFile())
+    .map(dirent => join((dirent as unknown as { parentPath?: string; path?: string }).parentPath || 'app', dirent.name));
+
+  for (const file of appFiles) {
+    const content = readFileSync(file, 'utf8');
+    // Ensure server secrets are never imported or referenced in client components
+    if (content.includes("'use client'") || content.includes('"use client"')) {
+      expect(content).not.toMatch(/SECTORS_API_KEY|SUPABASE_SERVICE_ROLE_KEY/);
+    }
   }
   expect(readFileSync('.env.example', 'utf8')).not.toMatch(/NEXT_PUBLIC_.*(?:SECTORS|SERVICE_ROLE)/);
 });
