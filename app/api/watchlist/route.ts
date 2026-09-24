@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { normalizeSymbol } from '../../../lib/sectors/normalize.ts';
+import { symbolSchema } from '../../../lib/sectors/schemas.ts';
+import { hasBearerToken } from '../../../lib/auth/bearer.ts';
 
 export async function GET() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
-    return NextResponse.json({ symbols: ['BBCA.JK', 'BBRI.JK', 'TLKM.JK', 'NSSS.JK', 'ASII.JK'] });
+    return NextResponse.json({ symbols: [], error: 'DATABASE_NOT_CONFIGURED' }, { status: 503 });
   }
 
   try {
@@ -19,17 +21,23 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      return NextResponse.json({ symbols: ['BBCA.JK', 'BBRI.JK', 'TLKM.JK', 'NSSS.JK', 'ASII.JK'] });
+      return NextResponse.json({ symbols: [], error: 'DATABASE_UNAVAILABLE' }, { status: 503 });
     }
 
     const rows = await response.json();
     return NextResponse.json({ symbols: rows.map((r: { symbol: string }) => r.symbol) });
   } catch {
-    return NextResponse.json({ symbols: ['BBCA.JK', 'BBRI.JK', 'TLKM.JK', 'NSSS.JK', 'ASII.JK'] });
+    return NextResponse.json({ symbols: [], error: 'DATABASE_UNAVAILABLE' }, { status: 503 });
   }
 }
 
 export async function POST(request: Request) {
+  if (!process.env.WATCHLIST_ADMIN_TOKEN || process.env.WATCHLIST_ADMIN_TOKEN.length < 32) {
+    return NextResponse.json({ error: 'WATCHLIST_WRITES_DISABLED' }, { status: 503 });
+  }
+  if (!hasBearerToken(request, process.env.WATCHLIST_ADMIN_TOKEN)) {
+    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -43,7 +51,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'MISSING_SYMBOL' }, { status: 400 });
     }
 
-    const symbol = normalizeSymbol(String(body.symbol));
+    const parsed = symbolSchema.safeParse(body.symbol);
+    if (!parsed.success) return NextResponse.json({ error: 'INVALID_SYMBOL' }, { status: 400 });
+    const symbol = normalizeSymbol(parsed.data);
 
     // Get or create default watchlist
     let watchlistId = '';
@@ -74,12 +84,18 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, symbol });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'ERROR' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'WATCHLIST_WRITE_FAILED' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
+  if (!process.env.WATCHLIST_ADMIN_TOKEN || process.env.WATCHLIST_ADMIN_TOKEN.length < 32) {
+    return NextResponse.json({ error: 'WATCHLIST_WRITES_DISABLED' }, { status: 503 });
+  }
+  if (!hasBearerToken(request, process.env.WATCHLIST_ADMIN_TOKEN)) {
+    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -93,7 +109,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'MISSING_SYMBOL' }, { status: 400 });
     }
 
-    const symbol = normalizeSymbol(String(body.symbol));
+    const parsed = symbolSchema.safeParse(body.symbol);
+    if (!parsed.success) return NextResponse.json({ error: 'INVALID_SYMBOL' }, { status: 400 });
+    const symbol = normalizeSymbol(parsed.data);
 
     const deleteRes = await fetch(`${url}/rest/v1/watchlist_symbols?symbol=eq.${encodeURIComponent(symbol)}`, {
       method: 'DELETE',
@@ -105,7 +123,7 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ ok: true, symbol });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'ERROR' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'WATCHLIST_WRITE_FAILED' }, { status: 500 });
   }
 }

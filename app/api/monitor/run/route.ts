@@ -1,8 +1,24 @@
 import { NextResponse } from 'next/server';
 import { Store } from '../../../../lib/db/store.ts';
 import { runMonitoringCycle } from '../../../../lib/automation/monitor.ts';
+import { hasBearerToken } from '../../../../lib/auth/bearer.ts';
+import { z } from 'zod';
+import { dateSchema, symbolSchema } from '../../../../lib/sectors/schemas.ts';
+
+const bodySchema = z.object({
+  startDate: dateSchema.optional(),
+  endDate: dateSchema.optional(),
+  maxPages: z.number().int().min(1).optional(),
+  watchlistSymbols: z.array(symbolSchema).max(20).optional(),
+}).strict();
 
 export async function POST(request: Request) {
+  if (!process.env.MONITOR_TRIGGER_TOKEN || process.env.MONITOR_TRIGGER_TOKEN.length < 32) {
+    return NextResponse.json({ error: 'TRIGGER_NOT_CONFIGURED' }, { status: 503 });
+  }
+  if (!hasBearerToken(request, process.env.MONITOR_TRIGGER_TOKEN)) {
+    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
   const sectorsApiKey = process.env.SECTORS_API_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,15 +31,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    let body: any = {};
-    try {
-      body = await request.json();
-    } catch {
-      // Empty body is allowed
+    if (Number(request.headers.get('content-length')) > 2048) {
+      return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
     }
+    const raw = await request.text();
+    if (raw.length > 2048) return NextResponse.json({ error: 'REQUEST_TOO_LARGE' }, { status: 413 });
+    const parsed = bodySchema.safeParse(raw ? JSON.parse(raw) : {});
+    if (!parsed.success) return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 });
+    const body = parsed.data;
 
     const store = new Store(url, serviceKey);
-    const maxPages = Number(body.maxPages || process.env.MAX_FILINGS_PAGES_PER_RUN || 3);
+    const cap = Number(process.env.MAX_FILINGS_PAGES_PER_RUN || 3);
+    if (!Number.isInteger(cap) || cap < 1 || cap > 10) throw new Error('INVALID_PAGE_CAP');
+    const maxPages = body.maxPages ?? cap;
+    if (maxPages > cap) return NextResponse.json({ error: 'PAGE_CAP_EXCEEDED' }, { status: 400 });
 
     const result = await runMonitoringCycle(store, sectorsApiKey, {
       startDate: body.startDate,
@@ -47,7 +68,6 @@ export async function POST(request: Request) {
       apiLatencyMsTotal: result.apiLatencyMsTotal,
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'MONITOR_RUN_FAILED';
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'MONITOR_RUN_FAILED' }, { status: 500 });
   }
 }

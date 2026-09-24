@@ -9,6 +9,7 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
   const [newTicker, setNewTicker] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [adminToken, setAdminToken] = useState('');
 
   const addSymbol = async (ticker: string) => {
     const clean = ticker.trim().toUpperCase();
@@ -22,7 +23,7 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
     try {
       const res = await fetch('/api/watchlist', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
         body: JSON.stringify({ symbol: clean }),
       });
 
@@ -33,18 +34,10 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
         setNewTicker('');
         setMessage({ text: `Successfully added ${formatted} to active watchlist`, type: 'success' });
       } else {
-        if (!symbols.includes(formatted)) {
-          setSymbols(prev => [...prev, formatted].sort());
-        }
-        setNewTicker('');
-        setMessage({ text: `Added ${formatted} (Local cache active)`, type: 'success' });
+        setMessage({ text: 'Save failed. Check the admin token and server connection.', type: 'error' });
       }
     } catch {
-      if (!symbols.includes(formatted)) {
-        setSymbols(prev => [...prev, formatted].sort());
-      }
-      setNewTicker('');
-      setMessage({ text: `Added ${formatted} (Offline fallback)`, type: 'success' });
+      setMessage({ text: 'Save failed. Check the server connection.', type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -57,15 +50,18 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
     try {
       const res = await fetch('/api/watchlist', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
         body: JSON.stringify({ symbol: symbolToRemove }),
       });
 
-      setSymbols(prev => prev.filter(s => s !== symbolToRemove));
-      setMessage({ text: `Removed ${symbolToRemove} from watchlist`, type: 'success' });
+      if (res.ok) {
+        setSymbols(prev => prev.filter(s => s !== symbolToRemove));
+        setMessage({ text: `Removed ${symbolToRemove} from watchlist`, type: 'success' });
+      } else {
+        setMessage({ text: 'Remove failed. Check the admin token and server connection.', type: 'error' });
+      }
     } catch {
-      setSymbols(prev => prev.filter(s => s !== symbolToRemove));
-      setMessage({ text: `Removed ${symbolToRemove} from local watchlist`, type: 'success' });
+      setMessage({ text: 'Remove failed. Check the server connection.', type: 'error' });
     } finally {
       setIsProcessing(false);
     }
@@ -76,6 +72,10 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
       {/* Add Symbol Card */}
       <div className="glass-panel">
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px' }}>Add Monitored Ticker</h3>
+        <label htmlFor="watchlist-admin-token">Watchlist admin token</label>
+        <input id="watchlist-admin-token" type="password" autoComplete="off" value={adminToken}
+          onChange={e => setAdminToken(e.target.value)} placeholder="Required to change the watchlist"
+          style={{ width: '100%', marginBottom: '16px' }} />
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
           Enter a 4-letter IDX stock symbol (e.g. <code>BBCA</code>, <code>ASII</code>, <code>NSSS</code>).
         </p>
@@ -98,7 +98,7 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
               fontSize: '0.9rem',
             }}
           />
-          <button type="submit" disabled={isProcessing || !newTicker.trim()} className="btn btn-primary">
+          <button type="submit" disabled={isProcessing || !newTicker.trim() || !adminToken} className="btn btn-primary">
             {isProcessing ? 'Saving...' : 'Add Ticker'}
           </button>
         </form>
@@ -117,7 +117,7 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
                   key={preset}
                   type="button"
                   onClick={() => !isMonitored && addSymbol(preset)}
-                  disabled={isMonitored || isProcessing}
+                  disabled={isMonitored || isProcessing || !adminToken}
                   style={{
                     background: isMonitored ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.04)',
                     border: isMonitored ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border-subtle)',
@@ -178,7 +178,7 @@ export default function WatchlistClient({ initialSymbols }: { initialSymbols: st
               <button
                 type="button"
                 onClick={() => removeSymbol(sym)}
-                disabled={isProcessing}
+                disabled={isProcessing || !adminToken}
                 title={`Remove ${sym}`}
                 style={{
                   background: 'none',

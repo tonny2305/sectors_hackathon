@@ -5,7 +5,7 @@ async function getWatchlist() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
-    return ['BBCA.JK', 'BBRI.JK', 'TLKM.JK', 'NSSS.JK', 'ASII.JK'];
+    return [];
   }
 
   try {
@@ -13,11 +13,11 @@ async function getWatchlist() {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
       cache: 'no-store',
     });
-    if (!res.ok) return ['BBCA.JK', 'BBRI.JK', 'TLKM.JK', 'NSSS.JK', 'ASII.JK'];
+    if (!res.ok) return [];
     const rows = await res.json();
     return rows.map((r: { symbol: string }) => r.symbol);
   } catch {
-    return ['BBCA.JK', 'BBRI.JK', 'TLKM.JK', 'NSSS.JK', 'ASII.JK'];
+    return [];
   }
 }
 
