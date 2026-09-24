@@ -1,0 +1,27 @@
+{
+  "results": [{
+    "title": "Samuel Sekuritas Indonesia buys shares of Nusantara Sawit Sejahtera",
+    "body": "This is Samuel Sekuritas Indonesia's 5th insider purchase in the last 6 months, totaling an accumulation of 1,890,344,900 shares transacted at an average price of IDR 495. Samuel Sekuritas Indonesia's ownership in Nusantara Sawit Sejahtera has increased from 40.17% to 42.73% in this period.",
+    "source": "https://www.idx.co.id/StaticData/NewsAndAnnouncement/ANNOUNCEMENTSTOCK/From_KSEI/LK-09072026-5264-00.pdf-0.pdf",
+    "timestamp": "2026-07-09T14:29:39",
+    "sector": "consumer-non-cyclicals",
+    "sub_sector": "food-beverage",
+    "tags": ["placement", "repurchase-agreement"],
+    "symbol": "NSSS.JK",
+    "transaction_type": "buy",
+    "holder_type": "institution",
+    "holder_name": "Samuel Sekuritas Indonesia",
+    "holding_before": 9559919000,
+    "holding_after": 10169179100,
+    "amount_transaction": 609260100,
+    "price": 576.478,
+    "transaction_value": 351225097500,
+    "price_transaction": [{"date": "2026-07-07", "type": "buy", "price": 580, "amount_transacted": 180108000}],
+    "share_percentage_before": 40.17,
+    "share_percentage_after": 42.73,
+    "share_percentage_transaction": 2.56,
+    "idx_investor_slug": null,
+    "idx_conglomerates_group_slug": null
+  }],
+  "pagination": {"total_count": 3016, "showing": 1, "limit": 2, "offset": 0, "has_next": true, "has_previous": false, "next_offset": 2, "previous_offset": null}
+}
