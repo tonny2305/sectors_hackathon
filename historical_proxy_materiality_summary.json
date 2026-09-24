@@ -1,0 +1,29 @@
+{
+  "sample_size": 27,
+  "sample_warning": "Publication-selected public-event proxy; NOT the unbiased distribution of Sectors /v2/filings/.",
+  "abs_ownership_delta_pp": {
+    "min": 0.01,
+    "p25": 0.23500000000000001,
+    "median": 0.94,
+    "p75": 4.265000000000001,
+    "p90": 5.928000000000001,
+    "max": 67.74
+  },
+  "simple_threshold_sensitivity": {
+    "LOW_abs_delta_lt_0_25pp": 7,
+    "MEDIUM_0_25_to_lt_1pp": 7,
+    "HIGH_ge_1pp": 13
+  },
+  "multi_rule_state_v1_proxy": {
+    "MATERIAL": 10,
+    "WATCH": 4,
+    "SILENT": 7,
+    "STRUCTURAL": 6
+  },
+  "interpretation": [
+    "0.25pp is close to the sample's lower quartile (~0.235pp).",
+    "1.0pp is close to the sample median (~0.94pp), but the sample is biased toward newsworthy changes.",
+    "Absolute percentage-point thresholds alone miss new positions and large relative changes from a small base.",
+    "Final thresholds must be recalibrated on authenticated Sectors filings, ideally 90-120 records, before production/demo lock."
+  ]
+}

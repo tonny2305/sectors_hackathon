@@ -1,0 +1,12 @@
+node_modules/
+.next/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+preflight_output/
+*.log
+__pycache__/
+.supabase/
+.npm-cache/

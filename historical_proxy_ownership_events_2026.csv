@@ -1,0 +1,28 @@
+﻿symbol,event_date,actor,holder_type_proxy,direction,before_pct,after_pct,delta_pp,transaction_value_idr,source_note,source_url
+NSSS,2026-07-09,Samuel Sekuritas Indonesia,institution,buy,40.17,42.73,2.56,351225097500,Official Sectors API documentation sample,https://docs.sectors.app/api-references/v2/indonesia/news/filings
+GOTO,2026-08-21,Morgan Stanley & Co International Plc,institution,buy,4.8267,5.1563,0.3296,87300000000,Bisnis.com report based on OJK ownership filing,https://market.bisnis.com/read/20260908/7/2002325/data-terbaru-september-2026-pemegang-saham-goto-jumbo-morgan-stanley-hingga-alibaba-masuk
+VOKS,2026-03-12,"Hengtong Optic-Electric International Co., Ltd.",corporate-investor,sell,84.75,79.85,-4.9,,Voksel Electric official disclosure,https://www.voksel.co.id/id/pages/information-disclosure
+SRTG,2026-09-14,Edwin Soeryadjaya,insider,buy,35.88,35.92,0.04,,IDNFinancials,https://www.idnfinancials.com/id/news/68867/edwin-soeryadjaya-borong-saham-srtg-usai-porsi-ritel-menyusut
+NSSS,2026-09-14,PT Samuel Tumbuh Bersama,corporate-investor,buy,8.85,14.07,5.22,,IDNFinancials,https://www.idnfinancials.com/id/news/68893/perusahaan-grup-samuel-jual-beli-miliaran-saham-nsss
+KETR,2026-09-17,PT Fajar Sejahtera Mandiri Nusantara,corporate-investor,sell,54.83,53.13,-1.7,9660000000,EmitenNews,https://emitennews.com/news/bos-emiten-kabel-laut-ketr-tampung-saham-divestasi-pengendali-rp96m
+KETR,2026-09-17,Dani Samsul Efendi,insider,buy,0.0,1.7,1.7,9660000000,EmitenNews,https://emitennews.com/news/bos-emiten-kabel-laut-ketr-tampung-saham-divestasi-pengendali-rp96m
+BREN,2026-04-20,PT Barito Pacific Tbk,corporate-investor,sell,64.666,64.6373,-0.0287,,Bareksa,https://www.bareksa.com/berita/saham/2026-04-22/brpt-jual-384-juta-saham-bren-untuk-kerek-free-float
+DSNG,2026-05-25,Triputra Investindo Arya,corporate-investor,buy,28.36,28.39,0.03,,Bisnis.com,https://market.bisnis.com/read/20260529/7/1977095/perubahan-kepemilikan-saham-abmm-beef-bipi-dsng-simp-hingga-supa-per-25-mei-2026
+SIMP,2026-05-25,Lo Kheng Hong,individual,buy,5.12,5.13,0.01,,Bisnis.com,https://market.bisnis.com/read/20260529/7/1977095/perubahan-kepemilikan-saham-abmm-beef-bipi-dsng-simp-hingga-supa-per-25-mei-2026
+SUPA,2026-05-25,A5-DB Holdings Pte. Ltd.,institution,buy,15.95,16.14,0.19,,Bisnis.com,https://market.bisnis.com/read/20260529/7/1977095/perubahan-kepemilikan-saham-abmm-beef-bipi-dsng-simp-hingga-supa-per-25-mei-2026
+HGII,2026-08-14,Robin Sunyoto,insider,buy,23.0,24.0,1.0,,IDNFinancials,https://www.idnfinancials.com/id/news/67605/robin-sunyoto-beli-375-000-saham-hgii-di-harga-rp118-rp124
+HILL,2026-01-22,Hillcon Equity Management,corporate-investor,buy,42.67,42.76,0.09,,IDNFinancials,https://www.idnfinancials.com/id/news/60755/hillcon-equity-borong-13-38-juta-saham-hill-kepemilikan-jadi-42-76
+BIPI,2026-05-25,PT Bakrie Capital Indonesia,corporate-investor,buy,6.73,7.06,0.33,38300000000,IDNFinancials,https://www.idnfinancials.com/id/news/64142/bakrie-capital-tambah-investasi-di-bipi-kini-miliki-7-06-saham
+GJTL,2026-07-21,Lo Kheng Hong,individual,buy,6.88,7.03,0.15,5900000000,IDNFinancials,https://www.idnfinancials.com/id/news/66660/lo-kheng-hong-borong-5-18-juta-saham-gjtl-senilai-rp5-9-miliar
+INET,2026-02-26,PT Abadi Kreasi Unggul Nusantara,corporate-investor,buy,59.1,59.38,0.28,24910000000,IDNFinancials,https://www.idnfinancials.com/id/news/61736/pengendali-tambah-62-9-juta-saham-inet-kepemilikan-jadi-59-38
+PANI,2026-06-30,PT Multi Artha Pratama,corporate-investor,sell,84.09,83.75,-0.34,,IDNFinancials,https://www.idnfinancials.com/id/news/65733/free-float-pani-milik-aguan-naik-jadi-16-25-usai-private-placement
+CBDK,2026-03-05,PT Agung Sedayu Group,corporate-investor,sell,1.37,0.43,-0.94,281850000000,IDNFinancials,https://www.idnfinancials.com/id/news/61975/agung-sedayu-lepas-52-9-juta-saham-cbdk-kepemilikan-jadi-0-43
+CBDK,2026-02-18,Tunas Mekar Jaya,corporate-investor,sell,1.37,0.93,-0.44,157500000000,IDNFinancials,https://www.idnfinancials.com/id/news/61513/tunas-mekar-jaya-kurangi-25-juta-saham-cbdk-kepemilikan-jadi-0-93
+SAME,2026-02-09,PT Elang Mahkota Teknologi Tbk,corporate-investor,buy,79.0,84.71,5.71,301720000000,IDNFinancials,https://www.idnfinancials.com/id/news/61267/pengendali-same-tambah-5-71-saham-kucurkan-rp301-72-miliar
+ARCI,2026-04-07,PT Rajawali Corpora,corporate-investor,sell,71.89,65.8,-6.09,,IDNFinancials,https://www.idnfinancials.com/id/news/62868/rajawali-kapital-caplok-1-53-miliar-saham-arci-dari-pengendali
+ARCI,2026-04-07,PT Rajawali Kapital Emas,corporate-investor,buy,11.76,17.58,5.82,,IDNFinancials,https://www.idnfinancials.com/id/news/62868/rajawali-kapital-caplok-1-53-miliar-saham-arci-dari-pengendali
+SCMA,2026-02-11,PT Elang Mahkota Teknologi Tbk,corporate-investor,buy,70.39,74.02,3.63,,IDNFinancials,https://www.idnfinancials.com/id/news/61316/pengendali-borong-2-68-miliar-saham-scma-kepemilikan-jadi-74-02
+ESSA,2026-04-13,Garibaldi Thohir,individual,sell,14.55,13.41,-1.14,,IDNFinancials,https://www.idnfinancials.com/id/news/62988/boy-thohir-lepas-195-juta-saham-essa-kini-pegang-13-41
+FAPA,2026-04-02,PT Prinsep Indo HLD,corporate-investor,sell,79.31,11.57,-67.74,,IDNFinancials,https://www.idnfinancials.com/id/news/62809/prinsep-indo-hld-jual-2-45-miliar-saham-fapa-lepas-status-pengendali
+BUKA,2026-02-09,PT Kreatif Media Karya,corporate-investor,buy,34.05,40.55,6.5,931830000000,IDNFinancials,https://www.idnfinancials.com/id/news/61313/pengendali-buka-tambah-6-5-saham-kucurkan-rp931-miliar
+SCMA,2026-02-26,RD Adi Wardhana Sariaatmadja,insider,buy,0.0,0.33,0.33,,IDNFinancials,https://www.idnfinancials.com/id/news/61893/komisaris-borong-241-8-juta-saham-scma-saat-harga-rp276
