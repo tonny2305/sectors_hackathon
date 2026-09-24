@@ -53,22 +53,24 @@ async function getDashboardData() {
 export default async function DashboardPage() {
   const { runs, latestRun, alerts, suppressed } = await getDashboardData();
 
-  // Attention metric calculations from latest run or aggregated
-  const interruptionReduction = latestRun?.interruption_reduction != null
-    ? `${(Number(latestRun.interruption_reduction) * 100).toFixed(1)}%`
-    : '94.6%';
+  // Find the most recent run with measured attention metrics or use latestRun
+  const activeRun = runs.find((r: any) => r.interruption_reduction != null) || latestRun;
 
-  const duplicateAlertRate = latestRun?.duplicate_alert_rate != null
-    ? `${(Number(latestRun.duplicate_alert_rate) * 100).toFixed(0)}%`
+  const interruptionReduction = activeRun?.interruption_reduction != null
+    ? `${(Number(activeRun.interruption_reduction) * 100).toFixed(1)}%`
+    : 'N/A';
+
+  const duplicateAlertRate = activeRun?.duplicate_alert_rate != null
+    ? `${(Number(activeRun.duplicate_alert_rate) * 100).toFixed(0)}%`
     : '0%';
 
-  const explainabilityCoverage = latestRun?.explainability_coverage != null
-    ? `${(Number(latestRun.explainability_coverage) * 100).toFixed(0)}%`
+  const explainabilityCoverage = activeRun?.explainability_coverage != null
+    ? `${(Number(activeRun.explainability_coverage) * 100).toFixed(0)}%`
     : '100%';
 
-  const totalScanned = latestRun?.records_scanned || 37;
-  const suppressedCount = latestRun?.suppressed_from_push_count || 35;
-  const alertsSent = latestRun?.alerts_sent || 2;
+  const totalScanned = activeRun?.records_scanned ?? (runs.length > 0 ? runs[0].records_scanned : 0);
+  const suppressedCount = activeRun?.suppressed_from_push_count ?? (runs.length > 0 ? runs[0].suppressed_from_push_count : 0);
+  const alertsSent = activeRun?.alerts_sent ?? (runs.length > 0 ? runs[0].alerts_sent : 0);
 
   return (
     <main className="container">
