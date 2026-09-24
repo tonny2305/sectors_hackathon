@@ -3,6 +3,7 @@ node_modules/
 coverage/
 *.tsbuildinfo
 .env
+.env.example
 .env.*
 !.env.example
 preflight_output/
