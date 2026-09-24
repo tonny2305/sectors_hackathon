@@ -1,12 +1,24 @@
 import 'server-only';
 import { z } from 'zod';
-import { normalizeFiling } from '../sectors/normalize.ts';
+import { normalizeFiling, type OwnershipEvent } from '../sectors/normalize.ts';
 import type { ApiCallLog } from '../sectors/client.ts';
 import type { MaterialityEvaluation, PriorHolderEvent } from '../materiality/types.ts';
 
 export class StoreError extends Error {}
 
 const savedRowsSchema = z.array(z.object({ id: z.string(), fingerprint: z.string() }));
+
+export interface HolderActivityStateRecord {
+  symbol: string;
+  normalized_holder_name: string;
+  last_transaction_type: string | null;
+  last_event_timestamp: string | null;
+  same_direction_count_30d: number;
+  same_direction_count_90d: number;
+  same_direction_count_180d: number;
+  cumulative_same_direction_delta_pp_180d: number;
+  latest_materiality_state: string;
+}
 
 export class Store {
   #url: string;
@@ -29,15 +41,19 @@ export class Store {
     method: 'GET' | 'POST' | 'PATCH' | 'PUT',
     body?: unknown,
     representation = false,
+    extraHeaders?: Record<string, string>,
   ): Promise<unknown> {
     try {
       const headers: Record<string, string> = {
         apikey: this.#key,
         Authorization: `Bearer ${this.#key}`,
         'Content-Type': 'application/json',
+        ...extraHeaders,
       };
       if (representation) {
-        headers['Prefer'] = 'return=representation';
+        headers['Prefer'] = headers['Prefer']
+          ? `${headers['Prefer']},return=representation`
+          : 'return=representation';
       }
       const response = await this.#fetch(this.#url + path, {
         method,
@@ -68,6 +84,23 @@ export class Store {
     return {
       inserted: parsed.data.length,
       duplicates: events.length - parsed.data.length,
+    };
+  }
+
+  async ingestWithRows(filings: unknown[]): Promise<{
+    inserted: number;
+    duplicates: number;
+    rows: Array<{ id: string; fingerprint: string }>;
+  }> {
+    const events = filings.map(normalizeFiling);
+    if (!events.length) return { inserted: 0, duplicates: 0, rows: [] };
+    const response = await this.request('rpc/ingest_filings', 'POST', { p_events: events }, true);
+    const parsed = savedRowsSchema.safeParse(response);
+    if (!parsed.success || parsed.data.length > events.length) throw new StoreError('INVALID_DATABASE_RESPONSE');
+    return {
+      inserted: parsed.data.length,
+      duplicates: events.length - parsed.data.length,
+      rows: parsed.data,
     };
   }
 
@@ -150,5 +183,60 @@ export class Store {
       ownership_delta_pp: number | null;
     }>;
     return rows || [];
+  }
+
+  async getWatchlistSymbols(): Promise<string[]> {
+    try {
+      const rows = (await this.request('watchlist_symbols?enabled=eq.true&select=symbol', 'GET')) as Array<{ symbol: string }>;
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows.map(r => r.symbol);
+      }
+    } catch {
+      // If table is empty or query fails, return empty list (caller can use all market or default list)
+    }
+    return [];
+  }
+
+  async upsertHolderActivityState(state: HolderActivityStateRecord): Promise<void> {
+    const payload = {
+      symbol: state.symbol,
+      normalized_holder_name: state.normalized_holder_name,
+      last_transaction_type: state.last_transaction_type,
+      last_event_timestamp: state.last_event_timestamp,
+      same_direction_count_30d: state.same_direction_count_30d,
+      same_direction_count_90d: state.same_direction_count_90d,
+      same_direction_count_180d: state.same_direction_count_180d,
+      cumulative_same_direction_delta_pp_180d: state.cumulative_same_direction_delta_pp_180d,
+      latest_materiality_state: state.latest_materiality_state,
+      updated_at: new Date().toISOString(),
+    };
+
+    await this.request(
+      'holder_activity_state?on_conflict=symbol,normalized_holder_name',
+      'POST',
+      payload,
+      false,
+      { Prefer: 'resolution=merge-duplicates' },
+    );
+  }
+
+  async queueAlert(filingId: string, evaluationId: string, channel = 'telegram'): Promise<boolean> {
+    z.string().uuid().parse(filingId);
+    z.string().uuid().parse(evaluationId);
+    try {
+      await this.request('alerts', 'POST', {
+        filing_id: filingId,
+        evaluation_id: evaluationId,
+        channel,
+        delivery_status: 'PENDING',
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof StoreError && error.message.includes('409')) {
+        // Unique constraint on filing_id prevents duplicate alerts
+        return false;
+      }
+      throw error;
+    }
   }
 }
