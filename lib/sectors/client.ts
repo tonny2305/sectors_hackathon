@@ -30,14 +30,19 @@ type Options = {
   fetch?: typeof fetch;
   sleep?: (ms: number) => Promise<unknown>;
   timeoutMs?: number;
+  maxAttempts?: number;
 };
 
 export class SectorsClient {
   #options: Options;
+  #attempts = 0;
   constructor(options: Options) {
     if (!options.apiKey.trim()) throw new SectorsError('MISSING_SECTORS_API_KEY');
     if (options.timeoutMs !== undefined && (!Number.isInteger(options.timeoutMs) || options.timeoutMs < 1)) {
       throw new SectorsError('INVALID_TIMEOUT');
+    }
+    if (options.maxAttempts !== undefined && (!Number.isInteger(options.maxAttempts) || options.maxAttempts < 1)) {
+      throw new SectorsError('INVALID_API_BUDGET');
     }
     this.#options = options;
   }
@@ -46,6 +51,8 @@ export class SectorsClient {
     const url = new URL(path, 'https://api.sectors.app');
     url.search = new URLSearchParams(params).toString();
     for (let attempt = 0; attempt < 3; attempt++) {
+      if (this.#attempts >= (this.#options.maxAttempts ?? 20)) throw new SectorsError('API_BUDGET_EXHAUSTED');
+      this.#attempts++;
       const started = performance.now();
       const log: ApiCallLog = { endpoint: path, requested_at: new Date().toISOString(),
         status_code: null, latency_ms: 0, estimated_credit_cost: 1, cache_hit: false, error: null };

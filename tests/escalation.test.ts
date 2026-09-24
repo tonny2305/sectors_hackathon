@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { evaluateEvent } from '../lib/materiality/engine.ts';
 import { normalizeFiling } from '../lib/sectors/normalize.ts';
 import type { PriorHolderEvent } from '../lib/materiality/types.ts';
+import { computeHolderHistory } from '../lib/materiality/holder-history.ts';
 
 function createHolderEvent(opts: {
   holder: string;
@@ -29,6 +30,21 @@ function createHolderEvent(opts: {
 }
 
 describe('Stateful Escalation & Holder Memory (Section 23)', () => {
+  it('excludes later filings on the same day from both repeat counts and previous state', () => {
+    const result = computeHolderHistory({
+      currentTimestamp: '2026-09-24T10:00:00', currentTransactionType: 'buy',
+      currentOwnershipDeltaPp: 0.20,
+      priorEvents: [
+        { id: 'future', source_timestamp: '2026-09-24T15:00:00', source_date: '2026-09-24',
+          transaction_type: 'buy', ownership_delta_pp: 0.22, materiality_state: 'MATERIAL' },
+        { id: 'past', source_timestamp: '2026-09-23T10:00:00', source_date: '2026-09-23',
+          transaction_type: 'buy', ownership_delta_pp: 0.18, materiality_state: 'SILENT' },
+      ],
+    });
+    expect(result.repeatCount180d).toBe(2);
+    expect(result.previousHolderEventTimestamp).toBe('2026-09-23T10:00:00');
+    expect(result.previousMaterialityStateForHolder).toBe('SILENT');
+  });
   it('11. Event 1: +0.18 pp first occurrence evaluates to SILENT', () => {
     const event1 = createHolderEvent({
       holder: 'Accumulator Capital',

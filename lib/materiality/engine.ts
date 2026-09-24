@@ -40,8 +40,6 @@ export function evaluateEvent(input: EvaluateEventInput): MaterialityEvaluation 
   const relativePositionChange = computeRelativePositionChange(
     event.shares_transacted,
     event.holding_before,
-    event.ownership_before_pct,
-    event.ownership_after_pct,
   );
 
   const newPosition = computeNewPosition(

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { SectorsClient, type ApiCallLog } from '../sectors/client.ts';
 import { Store, StoreError } from '../db/store.ts';
 import { normalizeFiling, normalizeSymbol, type OwnershipEvent } from '../sectors/normalize.ts';
-import { evaluateEvent } from '../materiality/engine.ts';
+import { evaluateEvent, ENGINE_VERSION } from '../materiality/engine.ts';
 import { computeAttentionMetrics } from '../materiality/metrics.ts';
 import { formatTelegramMessage, sendTelegramNotification } from '../alerts/telegram.ts';
 import type { AttentionMetrics, MaterialityEvaluation } from '../materiality/types.ts';
@@ -13,6 +13,7 @@ export interface MonitorCycleOptions {
   startDate?: string;
   endDate?: string;
   maxPages?: number;
+  maxApiAttempts?: number;
   triggerType?: 'SCHEDULED_CRON' | 'MANUAL_DISPATCH' | 'MANUAL_CLI' | 'E2E_TEST';
   watchlistSymbols?: string[];
   fetch?: typeof fetch;
@@ -59,14 +60,11 @@ export async function runMonitoringCycle(
   const client = new SectorsClient({
     apiKey: sectorsApiKey,
     fetch: options.fetch,
+    maxAttempts: options.maxApiAttempts ?? Number(process.env.MAX_SECTORS_API_ATTEMPTS_PER_RUN || 15),
     onApiCall: async (log: ApiCallLog) => {
       estimatedCredits += log.estimated_credit_cost;
       apiLatencyMsTotal += log.latency_ms;
-      try {
-        await store.logApiCall(runId, log);
-      } catch {
-        // Continue if log audit write fails
-      }
+      await store.logApiCall(runId, log);
     },
   });
 
@@ -79,6 +77,7 @@ export async function runMonitoringCycle(
       activeWatchlist = await store.getWatchlistSymbols();
     }
     const normalizedWatchlist = new Set(activeWatchlist.map(s => normalizeSymbol(s)));
+    if (normalizedWatchlist.size === 0) throw new StoreError('EMPTY_WATCHLIST');
 
     // 2. Fetch filings from Sectors API
     const filingsResult = await client.filings({
@@ -89,10 +88,12 @@ export async function runMonitoringCycle(
 
     // 3. Normalize & Deduplicate in Database
     const ingestResult = await store.ingestWithRows(filingsResult.records);
-    const newInsertedMap = new Map<string, string>(); // fingerprint -> database filing ID
-    for (const row of ingestResult.rows) {
-      newInsertedMap.set(row.fingerprint, row.id);
-    }
+    const sortedFilings = filingsResult.records
+      .map(raw => ({ raw, event: normalizeFiling(raw) }))
+      .sort((a, b) => a.event.source_timestamp.localeCompare(b.event.source_timestamp));
+    const storedRows = await store.getFilingIdsByFingerprint(sortedFilings.map(item => item.event.fingerprint));
+    const storedIds = new Map(storedRows.map(row => [row.fingerprint, row.id]));
+    const evaluatedIds = await store.getEvaluatedFilingIds(storedRows.map(row => row.id), ENGINE_VERSION);
 
     // 4. Filter Eligible New Filings
     const evaluatedResults: Array<{
@@ -101,26 +102,30 @@ export async function runMonitoringCycle(
       holderName: string | null;
       event: OwnershipEvent;
       evaluation: MaterialityEvaluation;
+      pushSent?: boolean;
       isDuplicatePush?: boolean;
     }> = [];
 
     const dailyCache = new Map<string, DailyRecord[]>();
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    let deliveryHealthy = Boolean(botToken && chatId);
 
-    for (const raw of filingsResult.records) {
-      const event = normalizeFiling(raw);
-      const dbId = newInsertedMap.get(event.fingerprint);
+    for (const { event } of sortedFilings) {
+      const dbId = storedIds.get(event.fingerprint);
 
-      // Only evaluate newly inserted events that match the watchlist (or all if watchlist is empty)
-      if (!dbId) continue;
+      // A prior run may have inserted this filing but failed before evaluation.
+      if (!dbId || evaluatedIds.has(dbId)) continue;
 
-      if (normalizedWatchlist.size > 0 && !normalizedWatchlist.has(event.symbol)) {
+      if (!normalizedWatchlist.has(event.symbol)) {
         continue;
       }
 
       // 5. Load prior holder behavior
-      const priorEvents = await store.getPriorHolderEvents(
+      const priorEvents = await store.getPriorHolderEventsBefore(
         event.symbol,
         event.normalized_holder_name || '',
+        event.source_timestamp,
       );
 
       // 6. Base evaluation without daily call (Credit-Aware)
@@ -137,7 +142,8 @@ export async function runMonitoringCycle(
         (event.transaction_value_idr !== null && event.transaction_value_idr > 0 && evaluation.materialityState === 'SILENT' && (evaluation.features.absOwnershipDeltaPp ?? 0) >= 0.10);
 
       if (isCandidate) {
-        let dailyRecords = dailyCache.get(event.symbol);
+        const cacheKey = `${event.symbol}:${event.source_date}`;
+        let dailyRecords = dailyCache.get(cacheKey);
         if (!dailyRecords) {
           try {
             // Calculate 30-day window ending on event date
@@ -145,7 +151,7 @@ export async function runMonitoringCycle(
             const start30d = new Date(eventDateMs - 30 * 86_400_000).toISOString().slice(0, 10);
             const dailyRes = await client.daily(event.symbol, start30d, event.source_date);
             dailyRecords = dailyRes.records;
-            dailyCache.set(event.symbol, dailyRecords);
+            dailyCache.set(cacheKey, dailyRecords);
           } catch {
             dailyRecords = [];
           }
@@ -165,12 +171,11 @@ export async function runMonitoringCycle(
       const evalId = await store.saveEvaluation(dbId, evaluation);
 
       // 9. Queue & Dispatch alert if MATERIAL or STRUCTURAL
+      let pushSent = false;
       if (evaluation.materialityState === 'MATERIAL' || evaluation.materialityState === 'STRUCTURAL') {
         const isQueued = await store.queueAlert(dbId, evalId, 'telegram');
 
         // If newly queued and Telegram credentials are present, send notification
-        const botToken = process.env.TELEGRAM_BOT_TOKEN;
-        const chatId = process.env.TELEGRAM_CHAT_ID;
         if (isQueued && botToken && chatId) {
           try {
             const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
@@ -188,11 +193,14 @@ export async function runMonitoringCycle(
             );
             if (sendRes.ok) {
               await store.updateAlertDeliveryStatus(dbId, 'SENT', sendRes.messageId);
+              pushSent = true;
             } else {
               await store.updateAlertDeliveryStatus(dbId, 'FAILED');
+              deliveryHealthy = false;
             }
           } catch {
             await store.updateAlertDeliveryStatus(dbId, 'FAILED');
+            deliveryHealthy = false;
           }
         }
       }
@@ -222,6 +230,7 @@ export async function runMonitoringCycle(
         holderName: event.holder_name,
         event,
         evaluation,
+        pushSent,
       });
     }
 
@@ -229,6 +238,7 @@ export async function runMonitoringCycle(
     const attentionMetrics = computeAttentionMetrics({
       eligibleNewFilings: evaluatedResults.length,
       evaluations: evaluatedResults,
+      deliveryHealthy,
     });
 
     // 12. Finish & Confirm Run in Store

@@ -114,6 +114,19 @@ describe('Mandatory Materiality Engine Rules (Section 23)', () => {
     expect(result.features.relativePositionChange).toBeCloseTo(0.321168, 4);
   });
 
+  it('does not infer share-based relative change from percentages when share counts are missing', () => {
+    const event = createMockFiling({
+      share_percentage_before: 1.37,
+      share_percentage_after: 0.93,
+      holding_before: null,
+      holding_after: null,
+      amount_transaction: 440000,
+    });
+    const result = evaluateEvent({ event, enrichmentSkipped: true });
+    expect(result.features.relativePositionChange).toBeNull();
+    expect(result.materialityState).toBe('WATCH');
+  });
+
   it('7. repeat 2 + moderate stake change evaluates to MATERIAL (2 independent WATCH dimensions)', () => {
     const event = createMockFiling({
       share_percentage_before: 5.0,

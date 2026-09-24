@@ -4,13 +4,15 @@ import type { OwnershipEvent } from '../sectors/normalize.ts';
 
 export function computeAttentionMetrics(input: {
   eligibleNewFilings: number;
+  deliveryHealthy?: boolean;
   evaluations: Array<{
     event: OwnershipEvent;
     evaluation: MaterialityEvaluation;
+    pushSent?: boolean;
     isDuplicatePush?: boolean;
   }>;
 }): AttentionMetrics {
-  const { eligibleNewFilings, evaluations } = input;
+  const { eligibleNewFilings, evaluations, deliveryHealthy = true } = input;
 
   let silentCount = 0;
   let watchCount = 0;
@@ -18,9 +20,10 @@ export function computeAttentionMetrics(input: {
   let structuralCount = 0;
   let duplicatePushes = 0;
   let explainablePushes = 0;
+  let totalPushAlerts = 0;
 
   for (const item of evaluations) {
-    const { event, evaluation, isDuplicatePush } = item;
+    const { event, evaluation, isDuplicatePush, pushSent } = item;
     const state = evaluation.materialityState;
 
     if (state === 'SILENT') silentCount++;
@@ -28,13 +31,14 @@ export function computeAttentionMetrics(input: {
     else if (state === 'MATERIAL') materialCount++;
     else if (state === 'STRUCTURAL') structuralCount++;
 
-    if (state === 'MATERIAL' || state === 'STRUCTURAL') {
+    if ((state === 'MATERIAL' || state === 'STRUCTURAL') && pushSent) {
+      totalPushAlerts++;
       if (isDuplicatePush) {
         duplicatePushes++;
       }
 
       // Check explainability: provenance, timestamp, quantitative feature, deterministic reason code
-      const hasProvenance = Boolean(event.source_url || event.source_timestamp);
+      const hasProvenance = Boolean(event.source_url);
       const hasTimestamp = Boolean(event.source_timestamp);
       const hasQuantitativeEvidence =
         evaluation.features.ownershipDeltaPp !== null ||
@@ -49,13 +53,11 @@ export function computeAttentionMetrics(input: {
     }
   }
 
-  const totalPushAlerts = materialCount + structuralCount;
-  const uniquePushAlertsSent = totalPushAlerts - duplicatePushes;
   const suppressedCount = silentCount + watchCount;
 
   const interruptionReduction =
-    eligibleNewFilings > 0
-      ? Number((1 - uniquePushAlertsSent / eligibleNewFilings).toFixed(4))
+    eligibleNewFilings > 0 && deliveryHealthy
+      ? Number((1 - totalPushAlerts / eligibleNewFilings).toFixed(4))
       : null;
 
   const duplicateAlertRate =
@@ -70,7 +72,7 @@ export function computeAttentionMetrics(input: {
 
   return {
     eligibleNewFilings,
-    pushAlertsSent: uniquePushAlertsSent,
+    pushAlertsSent: totalPushAlerts,
     interruptionReduction,
     totalPushAlerts,
     duplicatePushAlerts: duplicatePushes,

@@ -10,7 +10,7 @@ const range = { start: '2026-07-01', end: '2026-07-10' };
 const lastPage = { ...filingExample, pagination: { ...filingExample.pagination, has_next: false, next_offset: null } };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
-function setup(responses: Array<Response | Error>, options: { timeoutMs?: number } = {}) {
+function setup(responses: Array<Response | Error>, options: { timeoutMs?: number; maxAttempts?: number } = {}) {
   const logs: ApiCallLog[] = [];
   const fetcher = vi.fn<typeof fetch>(async () => {
     const next = responses.shift();
@@ -129,6 +129,13 @@ describe('requests, pagination and failure semantics', () => {
     expect(fetcher).toHaveBeenCalledTimes(3);
     expect(wait.mock.calls).toEqual([[30000], [30000]]);
     expect(logs).toHaveLength(3);
+  });
+
+  it('enforces the total request budget across retries and pages', async () => {
+    const { client, fetcher, logs } = setup([json({}, 429), json(filingExample)], { maxAttempts: 1 });
+    await expect(client.filings(range)).rejects.toThrow('API_BUDGET_EXHAUSTED');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(logs).toHaveLength(1);
   });
 
   it.each([400, 401, 403, 404])('does not retry permanent HTTP %i', async status => {

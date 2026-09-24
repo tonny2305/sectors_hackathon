@@ -151,6 +151,9 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
           return new Response(null, { status: 201 });
         }
 
+        if (path.startsWith('event_evaluations') && options?.method === 'GET') {
+          return Response.json((await db.query('select filing_id from event_evaluations')).rows);
+        }
         if (path.startsWith('event_evaluations')) {
           const body = JSON.parse(String(options?.body));
           const result = await db.query<{ id: string }>(
@@ -228,6 +231,12 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
         }
 
         if (path.startsWith('filings?')) {
+          if (path.includes('fingerprint=in.')) {
+            const filter = new URL(`https://example.test/${path}`).searchParams.get('fingerprint')!;
+            const fingerprints = filter.slice(4, -1).split(',');
+            return Response.json((await db.query<{ id: string; fingerprint: string }>('select id, fingerprint from filings')).rows
+              .filter(row => fingerprints.includes(row.fingerprint)));
+          }
           return Response.json([]);
         }
 
@@ -266,6 +275,7 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
       startDate: '2026-09-24',
       endDate: '2026-09-24',
       fetch: mockFetch,
+      watchlistSymbols: ['BBCA.JK', 'NSSS.JK'],
     });
 
     expect(result.status).toBe('COMPLETE');
@@ -277,10 +287,10 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
     // Verify Attention Metrics
     expect(result.attentionMetrics.silentCount).toBe(1);
     expect(result.attentionMetrics.materialCount).toBe(1);
-    expect(result.attentionMetrics.pushAlertsSent).toBe(1);
-    expect(result.attentionMetrics.interruptionReduction).toBe(0.5); // 1 - (1/2) = 50%
-    expect(result.attentionMetrics.duplicateAlertRate).toBe(0);
-    expect(result.attentionMetrics.explainabilityCoverage).toBe(1.0);
+    expect(result.attentionMetrics.pushAlertsSent).toBe(0);
+    expect(result.attentionMetrics.interruptionReduction).toBeNull();
+    expect(result.attentionMetrics.duplicateAlertRate).toBeNull();
+    expect(result.attentionMetrics.explainabilityCoverage).toBeNull();
 
     // Verify Database state
     const evaluations = (await db.query('select * from event_evaluations')).rows;
@@ -295,6 +305,18 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
     const runs = (await db.query<{ status: string }>('select status from automation_runs')).rows;
     expect(runs).toHaveLength(1);
     expect(runs[0]!.status).toBe('COMPLETE');
+
+    // A failure after raw persistence must not leave an event permanently unevaluated.
+    const silentId = (await db.query<{ filing_id: string }>("select filing_id from event_evaluations where materiality_state = 'SILENT' limit 1")).rows[0]!.filing_id;
+    await db.query('delete from event_evaluations where filing_id = $1', [silentId]);
+    const replay = await runMonitoringCycle(store, 'test-sectors-key', {
+      startDate: '2026-09-24', endDate: '2026-09-24', fetch: mockFetch,
+      watchlistSymbols: ['BBCA.JK', 'NSSS.JK'],
+    });
+    expect(replay.newEvents).toBe(0);
+    expect(replay.eligibleNewFilings).toBe(1);
+    expect((await db.query('select id from event_evaluations')).rows).toHaveLength(2);
+    expect((await db.query('select id from alerts')).rows).toHaveLength(1);
   });
 
   it('credit-aware routing skips daily API for silent non-candidate events', async () => {
@@ -344,8 +366,14 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
             : new Response(null, { status: 201 });
         }
         if (path.startsWith('api_call_logs')) return new Response(null, { status: 201 });
-        if (path.startsWith('event_evaluations')) return Response.json([{ id: 'eval-1' }]);
-        if (path.startsWith('filings?')) return Response.json([]);
+        if (path.startsWith('event_evaluations')) return options?.method === 'GET' ? Response.json([]) : Response.json([{ id: 'eval-1' }]);
+        if (path.startsWith('filings?')) {
+          if (!path.includes('fingerprint=in.')) return Response.json([]);
+          const filter = new URL(`https://example.test/${path}`).searchParams.get('fingerprint')!;
+          const fingerprints = filter.slice(4, -1).split(',');
+          return Response.json((await db.query<{ id: string; fingerprint: string }>('select id, fingerprint from filings')).rows
+            .filter(row => fingerprints.includes(row.fingerprint)));
+        }
         if (path.startsWith('watchlist_symbols')) return Response.json([]);
         if (path.startsWith('holder_activity_state')) return new Response(null, { status: 201 });
       }
@@ -365,6 +393,7 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
       startDate: '2026-09-24',
       endDate: '2026-09-24',
       fetch: mockFetch,
+      watchlistSymbols: ['BBCA.JK'],
     });
 
     expect(result.status).toBe('COMPLETE');
@@ -379,13 +408,23 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
       const urlStr = String(url);
       if (urlStr.includes('/rest/v1/')) {
         const path = urlStr.split('/rest/v1/')[1] || '';
-        if (path.startsWith('rpc/ingest_filings')) return Response.json([]);
+        if (path.startsWith('rpc/ingest_filings')) {
+          const body = JSON.parse(String(options?.body)) as { p_events: unknown[] };
+          return Response.json((await db.query('select * from public.ingest_filings($1::jsonb)', [JSON.stringify(body.p_events)])).rows);
+        }
         if (path.startsWith('automation_runs')) {
           return options?.method === 'PATCH'
             ? Response.json([{ id: 'mock' }])
             : new Response(null, { status: 201 });
         }
         if (path.startsWith('api_call_logs')) return new Response(null, { status: 201 });
+        if (path.startsWith('filings?fingerprint=in.')) {
+          const filter = new URL(`https://example.test/${path}`).searchParams.get('fingerprint')!;
+          const fingerprints = filter.slice(4, -1).split(',');
+          return Response.json((await db.query<{ id: string; fingerprint: string }>('select id, fingerprint from filings')).rows
+            .filter(row => fingerprints.includes(row.fingerprint)));
+        }
+        if (path.startsWith('event_evaluations') && options?.method === 'GET') return Response.json([]);
         if (path.startsWith('watchlist_symbols')) return Response.json([]);
       }
 
@@ -410,6 +449,7 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
       endDate: '2026-09-24',
       maxPages: 1,
       fetch: mockFetch,
+      watchlistSymbols: ['BBCA.JK'],
     });
 
     expect(result.status).toBe('PARTIAL');
@@ -448,6 +488,7 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
         startDate: '2026-09-24',
         endDate: '2026-09-24',
         fetch: mockFetch,
+        watchlistSymbols: ['NSSS.JK'],
       }),
     ).rejects.toThrow();
 

@@ -173,28 +173,44 @@ export class Store {
     return response[0].id as string;
   }
 
-  async getPriorHolderEvents(symbol: string, normalizedHolderName: string): Promise<PriorHolderEvent[]> {
-    const query = `filings?symbol=eq.${encodeURIComponent(symbol)}&normalized_holder_name=eq.${encodeURIComponent(normalizedHolderName)}&select=id,source_timestamp,source_date,transaction_type,ownership_delta_pp&order=source_date.desc&limit=50`;
+  async getPriorHolderEventsBefore(symbol: string, normalizedHolderName: string, currentTimestamp: string): Promise<PriorHolderEvent[]> {
+    const start = new Date(Date.parse(currentTimestamp.slice(0, 10)) - 180 * 86_400_000).toISOString().slice(0, 10);
+    const query = `filings?symbol=eq.${encodeURIComponent(symbol)}&normalized_holder_name=eq.${encodeURIComponent(normalizedHolderName)}&source_date=gte.${start}&source_timestamp=lt.${encodeURIComponent(currentTimestamp)}&select=id,source_timestamp,source_date,transaction_type,ownership_delta_pp,event_evaluations(materiality_state,created_at)&order=source_timestamp.desc&limit=1000`;
     const rows = (await this.request(query, 'GET')) as Array<{
       id: string;
       source_timestamp: string;
       source_date: string;
       transaction_type: 'buy' | 'sell' | 'others';
       ownership_delta_pp: number | null;
+      event_evaluations?: Array<{ materiality_state: PriorHolderEvent['materiality_state']; created_at: string }>;
     }>;
-    return rows || [];
+    if (!Array.isArray(rows) || rows.length >= 1000) throw new StoreError('HOLDER_HISTORY_INCOMPLETE');
+    // ponytail: capped read fails closed at 1,000 rows; paginate if a holder reaches that ceiling.
+    return rows.map(({ event_evaluations, ...row }) => ({ ...row,
+      materiality_state: event_evaluations?.sort((a, b) => b.created_at.localeCompare(a.created_at))[0]?.materiality_state,
+    }));
+  }
+
+  async getFilingIdsByFingerprint(fingerprints: string[]) {
+    if (!fingerprints.length) return [];
+    const query = `filings?fingerprint=in.(${fingerprints.map(encodeURIComponent).join(',')})&select=id,fingerprint`;
+    const rows = await this.request(query, 'GET');
+    if (!Array.isArray(rows) || rows.length !== new Set(fingerprints).size) throw new StoreError('FILING_LOOKUP_INCOMPLETE');
+    return savedRowsSchema.parse(rows);
+  }
+
+  async getEvaluatedFilingIds(ids: string[], engineVersion: string) {
+    if (!ids.length) return new Set<string>();
+    const query = `event_evaluations?filing_id=in.(${ids.join(',')})&engine_version=eq.${encodeURIComponent(engineVersion)}&select=filing_id`;
+    const rows = await this.request(query, 'GET');
+    if (!Array.isArray(rows)) throw new StoreError('EVALUATION_LOOKUP_FAILED');
+    return new Set(rows.map(row => z.string().uuid().parse(row.filing_id)));
   }
 
   async getWatchlistSymbols(): Promise<string[]> {
-    try {
-      const rows = (await this.request('watchlist_symbols?enabled=eq.true&select=symbol', 'GET')) as Array<{ symbol: string }>;
-      if (Array.isArray(rows) && rows.length > 0) {
-        return rows.map(r => r.symbol);
-      }
-    } catch {
-      // If table is empty or query fails, return empty list (caller can use all market or default list)
-    }
-    return [];
+    const rows = (await this.request('watchlist_symbols?enabled=eq.true&select=symbol', 'GET')) as Array<{ symbol: string }>;
+    if (!Array.isArray(rows)) throw new StoreError('INVALID_WATCHLIST_RESPONSE');
+    return rows.map(r => r.symbol);
   }
 
   async upsertHolderActivityState(state: HolderActivityStateRecord): Promise<void> {

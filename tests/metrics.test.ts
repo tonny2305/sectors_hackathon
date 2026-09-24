@@ -74,7 +74,8 @@ describe('Attention Intelligence Metrics (Section 19A & 23)', () => {
 
     const metrics = computeAttentionMetrics({
       eligibleNewFilings: 37,
-      evaluations,
+      evaluations: evaluations.map(item => ({ ...item,
+        pushSent: ['MATERIAL', 'STRUCTURAL'].includes(item.evaluation.materialityState) })),
     });
 
     expect(metrics.eligibleNewFilings).toBe(37);
@@ -101,6 +102,13 @@ describe('Attention Intelligence Metrics (Section 19A & 23)', () => {
     expect(metrics.explainabilityCoverage).toBeNull();
   });
 
+  it('does not claim attention reduction when delivery is not configured', () => {
+    const metrics = computeAttentionMetrics({ eligibleNewFilings: 2, evaluations: [], deliveryHealthy: false });
+    expect(metrics.pushAlertsSent).toBe(0);
+    expect(metrics.interruptionReduction).toBeNull();
+    expect(metrics.duplicateAlertRate).toBeNull();
+  });
+
   it('22. Duplicate alert rate counts duplicate push alerts, not duplicate API records', () => {
     const materialEvent = normalizeFiling({
       symbol: 'BBCA',
@@ -119,7 +127,7 @@ describe('Attention Intelligence Metrics (Section 19A & 23)', () => {
     // Clean execution: 0 duplicate pushes
     const metricsClean = computeAttentionMetrics({
       eligibleNewFilings: 1,
-      evaluations: [{ event: materialEvent, evaluation: eval1, isDuplicatePush: false }],
+      evaluations: [{ event: materialEvent, evaluation: eval1, pushSent: true, isDuplicatePush: false }],
     });
     expect(metricsClean.duplicatePushAlerts).toBe(0);
     expect(metricsClean.duplicateAlertRate).toBe(0);
@@ -128,8 +136,8 @@ describe('Attention Intelligence Metrics (Section 19A & 23)', () => {
     const metricsWithDup = computeAttentionMetrics({
       eligibleNewFilings: 1,
       evaluations: [
-        { event: materialEvent, evaluation: eval1, isDuplicatePush: false },
-        { event: materialEvent, evaluation: eval1, isDuplicatePush: true },
+        { event: materialEvent, evaluation: eval1, pushSent: true, isDuplicatePush: false },
+        { event: materialEvent, evaluation: eval1, pushSent: true, isDuplicatePush: true },
       ],
     });
     expect(metricsWithDup.duplicatePushAlerts).toBe(1);
@@ -153,7 +161,7 @@ describe('Attention Intelligence Metrics (Section 19A & 23)', () => {
 
     const metrics = computeAttentionMetrics({
       eligibleNewFilings: 1,
-      evaluations: [{ event: materialEvent, evaluation: eval1 }],
+      evaluations: [{ event: materialEvent, evaluation: eval1, pushSent: true }],
     });
 
     expect(metrics.pushAlertsSent).toBe(1);

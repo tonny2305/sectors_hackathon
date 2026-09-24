@@ -22,10 +22,9 @@ export function computeHolderHistory(input: HolderHistoryInput): HolderHistoryRe
   
   const currentDateMs = Date.parse(currentTimestamp.slice(0, 10));
   
-  // Sort prior events descending by timestamp (most recent first)
-  const sorted = [...priorEvents].sort((a, b) => {
-    return Date.parse(b.source_timestamp.slice(0, 10)) - Date.parse(a.source_timestamp.slice(0, 10));
-  });
+  // Source timestamps are locally formatted by Sectors; compare the full source string.
+  const sorted = priorEvents.filter(event => event.source_timestamp < currentTimestamp)
+    .sort((a, b) => b.source_timestamp.localeCompare(a.source_timestamp));
 
   const mostRecent = sorted[0];
   const previousHolderEventTimestamp = mostRecent?.source_timestamp ?? null;
@@ -48,7 +47,7 @@ export function computeHolderHistory(input: HolderHistoryInput): HolderHistoryRe
       const eventDateMs = Date.parse(event.source_timestamp.slice(0, 10));
       const diffDays = (currentDateMs - eventDateMs) / (1000 * 60 * 60 * 24);
 
-      // Must be in the past or same day, but not outside lookback
+      // Full-timestamp filtering above also excludes later filings on the same day.
       if (diffDays >= 0 && diffDays <= 180) {
         count180d += 1;
         if (event.ownership_delta_pp !== null) {

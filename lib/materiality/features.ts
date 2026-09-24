@@ -28,18 +28,9 @@ export function computeOwnershipDelta(before: number | null, after: number | nul
 export function computeRelativePositionChange(
   sharesTransacted: number | null,
   holdingBefore: number | null,
-  ownershipBeforePct: number | null,
-  ownershipAfterPct: number | null,
 ): number | null {
   if (sharesTransacted !== null && holdingBefore !== null && holdingBefore > 0) {
     return Number((Math.abs(sharesTransacted) / holdingBefore).toFixed(6));
-  }
-  if (
-    ownershipBeforePct !== null &&
-    ownershipBeforePct > 0 &&
-    ownershipAfterPct !== null
-  ) {
-    return Number((Math.abs(ownershipAfterPct - ownershipBeforePct) / ownershipBeforePct).toFixed(6));
   }
   return null;
 }
