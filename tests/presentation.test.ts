@@ -23,7 +23,7 @@ it('preserves missing versus measured zero, direction, small changes, and Jakart
   expect(rate(0)).toBe('0%');
   expect(rate(0.1)).toBe('10%');
   expect(timestamp('2026-09-24T18:00:00Z')).toBe('25 Sept 2026, 01:00:00 WIB');
-  expect(timestamp('2026-09-24T18:00:00')).toBe('24 Sept 2026, 18:00:00 WIB');
+  expect(timestamp('2026-09-24T18:00:00')).toBe('2026-09-24T18:00:00');
   expect(timestamp('invalid')).toBe('Not recorded');
   expect(reasonText('UNRECOGNIZED_CODE')).toBe('UNRECOGNIZED_CODE');
 });

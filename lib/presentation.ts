@@ -72,11 +72,11 @@ export function rate(value: number | null | undefined): string {
 
 export function timestamp(value: string | null | undefined): string {
   if (!value || !Number.isFinite(Date.parse(value))) return 'Not recorded';
-  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}+07:00`;
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)) return value;
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
-  }).format(new Date(normalized)) + ' WIB';
+  }).format(new Date(value)) + ' WIB';
 }
 
 const reasons: Record<string, string> = {
