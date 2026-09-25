@@ -1,0 +1,5 @@
+"dataset","clock","input_rows","unique_events","holder_company_pairs","episodes","repeated_episodes","source_start","source_end","missing_before_after","missing_share_relative_change","archived_daily_observations","direction_conflicts","repeated_small_opportunities","crossing_5pct_opportunities"
+"sectors_persisted","first_persisted","117","117","73","104","9","2026-07-09T09:06:25","2026-09-24T18:15:42","0","6","0","0","1","11"
+"sectors_persisted","source_time_assumption","117","117","73","104","9","2026-07-09T09:06:25","2026-09-24T18:15:42","0","6","0","0","1","11"
+"publication_proxy","source_time_assumption","27","27","27","27","0","2026-01-22T00:00:00","2026-09-17T00:00:00","0","27","0","0","0","1"
+"documentation_example","source_time_assumption","1","1","1","1","0","2026-07-09T14:29:39","2026-07-09T14:29:39","0","0","0","0","0","0"
