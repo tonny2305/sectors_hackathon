@@ -59,15 +59,19 @@ export function number(value: number | string | null | undefined): string {
 }
 
 export function percent(value: number | null | undefined): string {
-  return value == null ? 'Not recorded' : `${number(value)}%`;
+  return value == null ? 'Not recorded' : `${decimal(value)}%`;
 }
 
 export function delta(value: number | null | undefined): string {
-  return value == null ? 'Not recorded' : `${value > 0 ? '+' : ''}${number(Number(value.toPrecision(12)))} pp`;
+  return value == null ? 'Not recorded' : `${value > 0 ? '+' : ''}${decimal(value)} pp`;
 }
 
 export function rate(value: number | null | undefined): string {
-  return value == null ? 'Not measured' : `${number(Number((value * 100).toPrecision(12)))}%`;
+  return value == null ? 'Not measured' : `${decimal(value * 100)}%`;
+}
+
+export function magnitude(value: number | null | undefined): string {
+  return value == null ? 'Not recorded' : `${number(value)} pp`;
 }
 
 export function timestamp(value: string | null | undefined): string {
@@ -102,4 +106,9 @@ const reasons: Record<string, string> = {
 
 export function reasonText(code: string): string {
   return reasons[code] ?? code;
+}
+
+function decimal(value: number): string {
+  if (value !== 0 && Math.abs(value) < 0.01) return number(Number(value.toPrecision(12)));
+  return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(value);
 }

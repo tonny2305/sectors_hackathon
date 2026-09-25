@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { delta, number, percent, rate, reasonText, timestamp } from '../lib/presentation.ts';
+import { delta, magnitude, number, percent, rate, reasonText, timestamp } from '../lib/presentation.ts';
 import HolderTimeline from '../components/HolderTimeline';
 import { readEvidence } from '../app/read-evidence';
 
@@ -13,8 +13,10 @@ it('preserves missing versus measured zero, direction, small changes, and Jakart
   expect(number('123456789012345')).toBe('123,456,789,012,345');
   expect(number(NaN)).toBe('Not recorded');
   expect(percent(0)).toBe('0%');
+  expect(percent(34.0563)).toBe('34.06%');
   expect(percent(null)).toBe('Not recorded');
   expect(delta(42.73 - 40.17)).toBe('+2.56 pp');
+  expect(delta(2.345)).toBe('+2.35 pp');
   expect(delta(-0.1)).toBe('-0.1 pp');
   expect(delta(0)).toBe('0 pp');
   expect(delta(0.000000001)).toBe('+0.000000001 pp');
@@ -22,6 +24,9 @@ it('preserves missing versus measured zero, direction, small changes, and Jakart
   expect(rate(null)).toBe('Not measured');
   expect(rate(0)).toBe('0%');
   expect(rate(0.1)).toBe('10%');
+  expect(rate(0.340563)).toBe('34.06%');
+  expect(magnitude(8.37)).toBe('8.37 pp');
+  expect(magnitude(null)).toBe('Not recorded');
   expect(timestamp('2026-09-24T18:00:00Z')).toBe('25 Sept 2026, 01:00:00 WIB');
   expect(timestamp('2026-09-24T18:00:00')).toBe('2026-09-24T18:00:00');
   expect(timestamp('invalid')).toBe('Not recorded');

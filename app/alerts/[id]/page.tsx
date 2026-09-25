@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import HolderTimeline from '../../../components/HolderTimeline';
 import { z } from 'zod';
 import { ReadError, Reasons, State } from '../../../components/Evidence';
-import { delta, number, percent, rate, timestamp } from '../../../lib/presentation.ts';
+import { delta, magnitude, number, percent, rate, timestamp } from '../../../lib/presentation.ts';
 
 async function getAlertDetail(id: string) {
   if (!z.uuid().safeParse(id).success) notFound();
@@ -86,7 +86,7 @@ export default async function AlertDetailPage({ params }: { params: Promise<{ id
         <div><dt>Holding after / shares</dt><dd>{number(filing.holding_after)}</dd></div>
         <div><dt>Relative position change</dt><dd>{rate(evaluation.relative_position_change)}</dd></div>
         <div><dt>Same-direction events / 30 / 90 / 180 days</dt><dd>{number(evaluation.repeat_count_30d)} / {number(evaluation.repeat_count_90d)} / {number(evaluation.repeat_count_180d)}</dd></div>
-        <div><dt>Cumulative same-direction change / 180 days</dt><dd>{delta(evaluation.cumulative_same_direction_delta_pp_180d)}</dd></div>
+        <div><dt>Cumulative absolute same-direction change / 180 days</dt><dd>{magnitude(evaluation.cumulative_same_direction_delta_pp_180d)}</dd></div>
       </dl></section>
     </div>
 
