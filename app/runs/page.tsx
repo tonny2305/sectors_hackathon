@@ -1,91 +1,17 @@
-async function getRuns() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    return [];
-  }
-
-  try {
-    const res = await fetch(`${url}/rest/v1/automation_runs?order=started_at.desc&limit=50`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-      cache: 'no-store',
-    });
-    return res.ok ? await res.json() : [];
-  } catch {
-    return [];
-  }
-}
+import { Empty, ReadError, RunFacts, RunTable, State } from '../../components/Evidence';
+import { timestamp, type RunView } from '../../lib/presentation.ts';
+import { readEvidence } from '../read-evidence';
 
 export default async function RunsPage() {
-  const runs = await getRuns();
-
-  return (
-    <main className="container">
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Autonomous Run History</h1>
-          <span className="badge badge-active">AUDIT LOG</span>
-        </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Recorded monitoring cycles, including scheduled, manual, and verification runs.
-        </p>
-      </div>
-
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>STARTED (WIB)</th>
-              <th>TRIGGER</th>
-              <th>STATUS</th>
-              <th>PAGES</th>
-              <th>SCANNED</th>
-              <th>NEW</th>
-              <th>SILENT</th>
-              <th>WATCH</th>
-              <th>MATERIAL</th>
-              <th>STRUCTURAL</th>
-              <th>REDUCTION</th>
-              <th>CREDITS</th>
-              <th>LATENCY</th>
-            </tr>
-          </thead>
-          <tbody>
-            {runs.length > 0 ? (
-              runs.map((r: any) => (
-                <tr key={r.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
-                    {new Date(r.started_at).toLocaleString('id-ID')}
-                  </td>
-                  <td>
-                    <span className="reason-pill">{r.trigger_type}</span>
-                  </td>
-                  <td>
-                    <span className={`badge badge-${r.status === 'COMPLETE' ? 'active' : r.status === 'PARTIAL' ? 'material' : 'structural'}`}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)' }}>{r.pages_fetched}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)' }}>{r.records_scanned}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)' }}>{r.new_events}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{r.silent_count ?? 'N/A'}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#60a5fa' }}>{r.watch_count ?? 'N/A'}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#fbbf24' }}>{r.material_count ?? 'N/A'}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#c084fc' }}>{r.structural_count ?? 'N/A'}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>
-                    {r.interruption_reduction != null ? `${(Number(r.interruption_reduction) * 100).toFixed(1)}%` : 'N/A'}
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)' }}>{r.estimated_credits} cr</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{r.api_latency_ms_total} ms</td>
-                </tr>
-              ))
-            ) : (
-<tr><td colSpan={12}>No runs have been recorded yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </main>
-  );
+  const { rows, error } = await readEvidence<RunView>('automation_runs?order=started_at.desc&limit=50');
+  return <main id="main-content" className="container">
+    <header className="page-heading"><p className="eyebrow">04 / Execution evidence</p><h1>The run logbook.</h1><p>Recorded checks, actual coverage, and delivery counts. Scheduled, manual, and verification runs remain distinguishable.</p></header>
+    <div className="logbook-note"><strong>A schedule is a plan. A run is evidence.</strong><p>Read the trigger and outcome together. PARTIAL means limited coverage; zero delivered pushes does not mean zero priority decisions. All times are WIB (UTC+7).</p></div>
+    <ReadError message={error} />
+    {rows.length ? <><p className="section-caption">Latest {rows.length} runs · up to 50 · newest first</p><RunTable runs={rows} />
+      <section className="section-block" aria-labelledby="run-details-heading"><div className="section-heading"><div><p className="eyebrow">Behind each check</p><h2 id="run-details-heading">Execution details</h2></div></div>
+        <p className="section-caption">Classification counts, resources, and measured delivery rates. Expand a run to inspect.</p>
+        {rows.map(run => <details className="run-detail" key={run.id}><summary><time dateTime={run.started_at}>{timestamp(run.started_at)}</time><span>{run.trigger_type}</span><State state={run.status} /></summary><RunFacts run={run} /></details>)}
+      </section></> : !error && <Empty title="No execution evidence yet.">The first persisted run will show its trigger, scan coverage, and outcome here.</Empty>}
+  </main>;
 }

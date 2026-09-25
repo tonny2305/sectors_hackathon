@@ -1,142 +1,31 @@
+import Link from 'next/link';
 import type { PriorHolderEvent, MaterialityState } from '../lib/materiality/types.ts';
+import { delta, timestamp } from '../lib/presentation.ts';
+import { State } from './Evidence';
 
-interface TimelineItem {
-  id: string;
-  source_timestamp: string;
-  source_date: string;
-  transaction_type: 'buy' | 'sell' | 'others';
-  ownership_delta_pp: number | null;
-  materiality_state?: MaterialityState;
-  isCurrent?: boolean;
-}
-
-export default function HolderTimeline({
-  symbol,
-  holderName,
-  events,
-  currentEvent,
-  escalatedFromPriorState,
-}: {
+export default function HolderTimeline({ symbol, holderName, events, currentEvent, escalatedFromPriorState }: {
   symbol: string;
   holderName: string;
   events: PriorHolderEvent[];
-  currentEvent: {
-    source_timestamp: string;
-    source_date: string;
-    transaction_type: 'buy' | 'sell' | 'others';
-    ownership_delta_pp: number | null;
-    materiality_state: MaterialityState;
-  };
+  currentEvent: Omit<PriorHolderEvent, 'id'> & { materiality_state: MaterialityState };
   escalatedFromPriorState: boolean;
 }) {
-  // Combine past events + current event sorted chronologically (oldest to newest)
-  const allEvents: TimelineItem[] = [
-    ...events.map(e => ({ ...e, isCurrent: false })),
-    {
-      id: 'current-event',
-      source_timestamp: currentEvent.source_timestamp,
-      source_date: currentEvent.source_date,
-      transaction_type: currentEvent.transaction_type,
-      ownership_delta_pp: currentEvent.ownership_delta_pp,
-      materiality_state: currentEvent.materiality_state,
-      isCurrent: true,
-    },
-  ].sort((a, b) => Date.parse(a.source_date) - Date.parse(b.source_date));
+  // Display order only; the engine's holder-history calculations are unchanged.
+  const allEvents = [
+    ...events.map(event => ({ ...event, isCurrent: false })),
+    { ...currentEvent, id: 'current-event', isCurrent: true },
+  ].sort((a, b) => Date.parse(a.source_timestamp) - Date.parse(b.source_timestamp));
 
-  return (
-    <div className="glass-panel" style={{ marginTop: '24px' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-          Historical Holder Behavior Timeline
-        </h3>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          Prior 180-day activity for <strong style={{ color: 'var(--text-secondary)' }}>{holderName}</strong> in <strong style={{ color: 'var(--text-secondary)' }}>{symbol}</strong>
-        </p>
-      </div>
-
-      <div className="timeline" style={{ paddingLeft: '24px' }}>
-        {allEvents.map((item, index) => {
-          const state = item.materiality_state ?? 'UNVERIFIED';
-          const dotClass = state === 'MATERIAL' || state === 'STRUCTURAL'
-            ? 'material'
-            : state === 'WATCH'
-            ? 'watch'
-            : 'silent';
-
-          const deltaSign = (item.ownership_delta_pp ?? 0) >= 0 ? '+' : '';
-          const deltaText = item.ownership_delta_pp !== null
-            ? `${deltaSign}${item.ownership_delta_pp} pp`
-            : 'Unknown change';
-
-          return (
-            <div key={item.id || index} className="timeline-item">
-              <div className={`timeline-dot ${dotClass}`} />
-              
-              <div style={{
-                background: item.isCurrent ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                border: item.isCurrent ? '1px solid var(--border-glow)' : '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                padding: '12px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '12px',
-              }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {item.source_date}
-                    </span>
-                    <span style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      color: item.transaction_type === 'buy' ? 'var(--accent-emerald)' : '#f87171',
-                      textTransform: 'uppercase',
-                    }}>
-                      {item.transaction_type} ({deltaText})
-                    </span>
-                    {item.isCurrent && (
-                      <span style={{
-                        fontSize: '0.65rem',
-                        fontWeight: 700,
-                        background: 'rgba(56, 189, 248, 0.2)',
-                        color: '#38bdf8',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                      }}>
-                        CURRENT EVENT
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Event Timestamp: {item.source_timestamp}
-                  </div>
-                </div>
-
-                <div className={`badge badge-${state.toLowerCase()}`}>
-                  {state}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {escalatedFromPriorState && (
-        <div style={{
-          marginTop: '20px',
-          padding: '12px 16px',
-          borderRadius: '6px',
-          background: 'rgba(245, 158, 11, 0.08)',
-          border: '1px solid rgba(245, 158, 11, 0.2)',
-          fontSize: '0.82rem',
-          color: 'var(--material-text)',
-        }}>
-          <strong>Escalated by holder history:</strong> This event crossed a repeated-behavior rule. Review the prior events and reason codes above.
-        </div>
-      )}
-    </div>
-  );
+  return <section className="holder-history" aria-labelledby="history-heading">
+    <div className="section-heading"><div><p className="eyebrow">Holder memory / preceding 180 days</p><h2 id="history-heading">One filing is a moment.<br />A holder’s history is context.</h2></div></div>
+    <p className="section-caption">{holderName} · {symbol} · {events.length} prior records shown (up to 100), oldest first. This is the recorded sequence, not a predicted path.</p>
+    {escalatedFromPriorState && <p className="escalation-note"><strong>Escalated by holder history.</strong> Repeated same-direction changes altered the interpretation of this event. Read the recorded reasons alongside the sequence.</p>}
+    {!events.length && <p className="history-empty">No prior holder events are available in this view. Only the current event is shown; no earlier state is inferred.</p>}
+    <ol className="holder-sequence">{allEvents.map((item, index) => <li key={item.id} className={`history-event history-${(item.materiality_state ?? 'unverified').toLowerCase()} ${item.isCurrent ? 'history-current' : ''}`}>
+      <span className="sequence-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+      <div className="history-time"><time dateTime={item.source_timestamp}>{timestamp(item.source_timestamp)}</time>{item.isCurrent ? <strong>Current event</strong> : <Link href={`/alerts/${item.id}`}>Inspect filing ↗</Link>}</div>
+      <div className="history-change"><span>{item.transaction_type?.toUpperCase() ?? 'ACTION NOT RECORDED'}</span><strong>{delta(item.ownership_delta_pp)}</strong></div>
+      <div className="history-state"><span className="sr-only">Classified as </span><State state={item.materiality_state ?? 'UNVERIFIED'} />{item.isCurrent && escalatedFromPriorState && <small>↑ Escalated</small>}</div>
+    </li>)}</ol>
+  </section>;
 }

@@ -2,27 +2,28 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import HolderTimeline from '../../../components/HolderTimeline';
 import { z } from 'zod';
-import type { PriorHolderEvent, MaterialityState } from '../../../lib/materiality/types.ts';
+import { ReadError, Reasons, State } from '../../../components/Evidence';
+import { delta, number, percent, rate, timestamp } from '../../../lib/presentation.ts';
 
 async function getAlertDetail(id: string) {
   if (!z.uuid().safeParse(id).success) notFound();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) notFound();
+  if (!url || !key) throw new Error('Evidence unavailable');
 
-  try {
     const [filingRes, evalRes] = await Promise.all([
       fetch(`${url}/rest/v1/filings?id=eq.${id}&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         cache: 'no-store',
       }),
-      fetch(`${url}/rest/v1/event_evaluations?filing_id=eq.${id}&limit=1`, {
+      fetch(`${url}/rest/v1/event_evaluations?filing_id=eq.${id}&order=created_at.desc&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         cache: 'no-store',
       }),
     ]);
 
+    if (!filingRes.ok || !evalRes.ok) throw new Error('Evidence unavailable');
     const filings = await filingRes.json();
     const evals = await evalRes.json();
 
@@ -31,6 +32,7 @@ async function getAlertDetail(id: string) {
     }
 
     const filing = filings[0];
+    if (!Array.isArray(evals)) throw new Error('Evidence unavailable');
     const evaluation = evals[0];
     if (!evaluation) notFound();
 
@@ -43,7 +45,8 @@ async function getAlertDetail(id: string) {
         cache: 'no-store',
       },
     );
-    const rows = priorRes.ok ? await priorRes.json() : [];
+    const priorPayload = priorRes.ok ? await priorRes.json() : [];
+    const rows = Array.isArray(priorPayload) ? priorPayload : [];
     const priorEvents = rows.map((row: any) => {
       const { event_evaluations, ...event } = row;
       return { ...event, materiality_state: event_evaluations?.sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))[0]?.materiality_state };
@@ -53,153 +56,48 @@ async function getAlertDetail(id: string) {
       filing,
       evaluation,
       priorEvents,
+      historyError: priorRes.ok ? null : 'Prior-holder evidence could not be loaded. The sequence below is incomplete.',
     };
-  } catch {
-    notFound();
-  }
 }
 
 export default async function AlertDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { filing, evaluation, priorEvents } = await getAlertDetail(id);
-
+  const { filing, evaluation, priorEvents, historyError } = await getAlertDetail(id);
   const state = evaluation.materiality_state;
-  const deltaPp = filing.ownership_delta_pp;
-  const deltaSign = (deltaPp ?? 0) >= 0 ? '+' : '';
+  const quiet = state === 'SILENT' || state === 'WATCH';
 
-  return (
-    <main className="container">
-      {/* Breadcrumbs */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '0.85rem' }}>
-        <Link href="/alerts" style={{ color: '#38bdf8' }}>&larr; Back to Alerts Feed</Link>
-        <span style={{ color: 'var(--text-muted)' }}>/</span>
-        <span style={{ color: 'var(--text-muted)' }}>{filing.symbol}</span>
-      </div>
+  return <main id="main-content" className="container">
+    <Link className="text-link breadcrumb" href={quiet ? '/suppressed' : '/alerts'}>&lt;- {quiet ? 'Attention Log' : 'Priority alerts'}</Link>
+    <header className={`event-header detail-${state.toLowerCase()}`}>
+      <div className="detail-identity"><p className="eyebrow">Ownership evidence / {filing.source_date}</p><div className="detail-title"><h1>{filing.symbol}</h1><State state={state} /></div><p className="holder-name">{filing.holder_name ?? 'Holder not recorded'}</p><p className="muted">{filing.holder_type ?? 'Holder type not recorded'} / {filing.transaction_type?.toUpperCase() ?? 'Action not recorded'}</p></div>
+      <div className="ownership-move"><p className="eyebrow">Ownership before -&gt; after</p><div><span>{percent(filing.ownership_before_pct)}</span><span className="ownership-arrow" aria-hidden="true">-&gt;</span><strong>{percent(filing.ownership_after_pct)}</strong></div><p className="ownership-delta">{delta(filing.ownership_delta_pp)} <span>percentage-point change</span></p></div>
+    </header>
 
-      {/* Main Header Card */}
-      <div className="glass-panel" style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <h1 style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
-                {filing.symbol}
-              </h1>
-              <span className={`badge badge-${state.toLowerCase()}`}>{state}</span>
-            </div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-              {filing.holder_name}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Holder Type: <strong style={{ color: 'var(--text-secondary)' }}>{filing.holder_type ?? 'Unknown'}</strong>
-              {' '}• Source Date: <strong style={{ color: 'var(--text-secondary)' }}>{filing.source_date}</strong>
-            </div>
-          </div>
+    <div className="detail-columns">
+      <section aria-labelledby="decision-heading"><p className="eyebrow">The decision</p><h2 id="decision-heading">{quiet ? 'Why this stayed quiet.' : 'Why this deserves attention.'}</h2>
+        <Reasons codes={evaluation.reason_codes_json ?? []} />
+        {quiet && <div className="suppression-decision"><h3>Withheld from external push</h3><Reasons codes={evaluation.suppression_reason_codes_json ?? []} /></div>}
+        <p className="context-note">Enrichment {evaluation.enrichment_skipped ? 'skipped' : 'attempted'} / Liquidity context {evaluation.context_unavailable ? 'unavailable' : 'available'}.</p>
+      </section>
+      <section aria-labelledby="position-heading"><p className="eyebrow">Quantitative record</p><h2 id="position-heading">The position, in numbers.</h2><dl className="facts">
+        <div><dt>Shares transacted</dt><dd>{number(filing.shares_transacted)}</dd></div>
+        <div><dt>Transaction value / IDR</dt><dd>{number(filing.transaction_value_idr)}</dd></div>
+        <div><dt>Holding before / shares</dt><dd>{number(filing.holding_before)}</dd></div>
+        <div><dt>Holding after / shares</dt><dd>{number(filing.holding_after)}</dd></div>
+        <div><dt>Relative position change</dt><dd>{rate(evaluation.relative_position_change)}</dd></div>
+        <div><dt>Same-direction events / 30 / 90 / 180 days</dt><dd>{number(evaluation.repeat_count_30d)} / {number(evaluation.repeat_count_90d)} / {number(evaluation.repeat_count_180d)}</dd></div>
+        <div><dt>Cumulative same-direction change / 180 days</dt><dd>{delta(evaluation.cumulative_same_direction_delta_pp_180d)}</dd></div>
+      </dl></section>
+    </div>
 
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>OWNERSHIP DELTA</div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: (deltaPp ?? 0) >= 0 ? 'var(--accent-emerald)' : '#f87171' }}>
-              {deltaSign}{deltaPp} pp
-            </div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {filing.ownership_before_pct}% ➔ {filing.ownership_after_pct}%
-            </div>
-          </div>
-        </div>
-      </div>
+    <ReadError message={historyError} />
+    <HolderTimeline symbol={filing.symbol} holderName={filing.holder_name ?? 'Holder not recorded'} events={priorEvents}
+      currentEvent={{ source_timestamp: filing.source_timestamp, source_date: filing.source_date, transaction_type: filing.transaction_type, ownership_delta_pp: filing.ownership_delta_pp, materiality_state: state }}
+      escalatedFromPriorState={evaluation.escalated_from_prior_state === true} />
 
-      {/* Grid: Quantitative Evidence & Provenance */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', marginBottom: '24px' }}>
-        {/* Stake & Position Evidence */}
-        <div className="glass-panel">
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>Position Evidence</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Transaction Action</span>
-              <span style={{ fontWeight: 700, textTransform: 'uppercase', color: filing.transaction_type === 'buy' ? 'var(--accent-emerald)' : '#f87171' }}>
-                {filing.transaction_type}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Shares Transacted</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                {filing.shares_transacted != null ? Number(filing.shares_transacted).toLocaleString('en-US') : 'N/A'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Transaction Value</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                {filing.transaction_value_idr != null ? `IDR ${Number(filing.transaction_value_idr).toLocaleString('id-ID')}` : 'N/A'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '8px' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Holding Before / After</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem' }}>
-                {filing.holding_before != null ? Number(filing.holding_before).toLocaleString('en-US') : 'N/A'} ➔ {filing.holding_after != null ? Number(filing.holding_after).toLocaleString('en-US') : 'N/A'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Relative Position Shift</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#38bdf8' }}>
-                {evaluation.relative_position_change ? `${(Number(evaluation.relative_position_change) * 100).toFixed(2)}%` : 'N/A'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Decision Reasons & Provenance */}
-        <div className="glass-panel">
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>Decision & Sectors Provenance</h3>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>EVALUATION REASON CODES</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-              {(evaluation.reason_codes_json || []).map((rc: string) => (
-                <span key={rc} className="reason-pill">{rc}</span>
-              ))}
-            </div>
-            {(state === 'SILENT' || state === 'WATCH') && (
-              <div style={{ marginTop: '16px' }}>
-                <strong>No external alert: {state}</strong>
-                <p>Enrichment {evaluation.enrichment_skipped ? 'skipped' : 'attempted'}; context {evaluation.context_unavailable ? 'unavailable' : 'available'}.</p>
-                {(evaluation.suppression_reason_codes_json || []).map((code: string) => <span key={code} className="suppression-pill">{code}</span>)}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Sectors Source Timestamp: </span>
-              <code style={{ fontFamily: 'var(--font-mono)', color: '#38bdf8' }}>{filing.source_timestamp}</code>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)' }}>Fingerprint: </span>
-              <code style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{filing.fingerprint}</code>
-            </div>
-            {filing.source_url && (
-              <div style={{ marginTop: '6px' }}>
-                <a href={filing.source_url} target="_blank" rel="noreferrer" style={{ color: '#38bdf8', textDecoration: 'underline' }}>
-                  Open Raw IDX Source Document &rarr;
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Historical Holder Behavior Timeline Component */}
-      <HolderTimeline
-        symbol={filing.symbol}
-        holderName={filing.holder_name}
-        events={priorEvents}
-        currentEvent={{
-          source_timestamp: filing.source_timestamp,
-          source_date: filing.source_date,
-          transaction_type: filing.transaction_type,
-          ownership_delta_pp: filing.ownership_delta_pp,
-          materiality_state: state,
-        }}
-        escalatedFromPriorState={evaluation.escalated_from_prior_state === true}
-      />
-    </main>
-  );
+    <section className="provenance section-block" aria-labelledby="source-heading">
+      <div><p className="eyebrow">Source & provenance</p><h2 id="source-heading">Trace it to the record.</h2><p>Ownership filing sourced through Sectors. Source timestamps are preserved below; display times elsewhere use WIB.</p>{filing.source_url && <a className="text-link" href={filing.source_url} target="_blank" rel="noreferrer">Open original source document -&gt;</a>}</div>
+      <dl className="facts"><div><dt>Source timestamp / original</dt><dd>{filing.source_timestamp}</dd></div><div><dt>Evaluated / WIB</dt><dd>{timestamp(evaluation.created_at)}</dd></div><div><dt>Engine version</dt><dd>{evaluation.engine_version ?? 'Not recorded'}</dd></div><div><dt>Filing ID</dt><dd>{filing.id}</dd></div><div><dt>Fingerprint</dt><dd>{filing.fingerprint}</dd></div></dl>
+    </section>
+  </main>;
 }

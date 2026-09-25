@@ -24,8 +24,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <a className="skip-link" href="#main-content">Skip to content</a>
         <Navbar />
-        <div style={{ flex: 1, padding: '32px 0 64px' }}>
+        <div className="page-content">
           {children}
         </div>
         <Footer />
