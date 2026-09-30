@@ -8,6 +8,7 @@ import {
   crossing, csv, defaults, eventOnly, evaluateAnnotations, factualAnnotationRows, IE, ingestAnnotations, loadDatasets, parseCsv, replay, reviewerTemplateRows, summarize, timestampMs,
   type Input,
 } from '../research/attention-benchmark/benchmark.ts';
+import { buildHumanEvaluation, cohenKappa, fleissKappa, weightedCohenKappa } from '../research/attention-benchmark/human-evaluation.ts';
 
 // Every event authored here is SYNTHETIC. None enter reported empirical benchmark results.
 function input(date: string, before = 10, after = 10.1, extra: Record<string, unknown> = {}): Input {
@@ -215,5 +216,24 @@ describe('Offline attention benchmark: synthetic chronology and failure checks',
         expect(rows.every(r => r.dataset !== 'synthetic_test_only')).toBe(true);
       }
     }
+  });
+
+  it('validates and reproduces the sealed human evaluation without replaying decisions', () => {
+    const base = 'research/attention-benchmark/results/';
+    const annotations = readFileSync(base + 'human-annotations-labeled.csv', 'utf8');
+    const factual = readFileSync(base + 'human-annotation.csv', 'utf8');
+    const evidence = readFileSync(base + 'events.csv', 'utf8');
+    const evaluation = buildHumanEvaluation(annotations, factual, evidence);
+    expect(evaluation.results.validation).toEqual({ rows: 117, unique_input_ids: 117, labels: 351,
+      missing_labels: 0, invalid_labels: 0, input_id_identity_preserved: true, frozen_evidence_matches_checkpoint: true });
+    expect(evaluation.eventRows).toHaveLength(117);
+    expect(evaluation.results.systems.map(result => result.system)).toEqual(['B0', 'B1', 'B2', 'B3', 'B3C']);
+    expect(JSON.parse(readFileSync(base + 'human-evaluation-results.json', 'utf8'))).toEqual(evaluation.results);
+    expect(parseCsv(readFileSync(base + 'human-evaluation-events.csv', 'utf8'))).toEqual(parseCsv(csv(evaluation.eventRows)));
+    expect(cohenKappa([0, 1, 2], [0, 1, 2])).toBe(1);
+    expect(weightedCohenKappa([0, 1, 2], [0, 1, 2])).toBe(1);
+    expect(fleissKappa([[0, 0, 0], [1, 1, 1], [2, 2, 2]])).toBe(1);
+    const rows = parseCsv(annotations); rows[0]!.reviewer_1_label = '';
+    expect(() => buildHumanEvaluation(csv(rows), factual, evidence)).toThrow('MISSING_REVIEWER_LABEL');
   });
 });
