@@ -1,0 +1,810 @@
+{
+  "corpus_class": "POST_FREEZE_ARCHIVAL_HOLDOUT",
+  "created_at": "2026-09-30T16:57:15.956Z",
+  "date_range_requested": {
+    "start": "2000-01-01",
+    "end": "2026-09-30"
+  },
+  "auth": "Authorization header from local environment; never stored",
+  "usage_before": null,
+  "usage_after": null,
+  "usage_note": "No Sectors usage/balance endpoint is exposed by the repository client; response headers recorded only if present.",
+  "requests": [
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 0
+      },
+      "fetched_at": "2026-09-30T16:57:15.957Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 0,
+        "has_next": true,
+        "has_previous": false,
+        "next_offset": 30,
+        "previous_offset": null
+      },
+      "response_sha256": "8d8d37d2ab81604552d2daf0924f031752d1235fb10300e97cbdbe7d28e4fc1b",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_001_offset_000000.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 30
+      },
+      "fetched_at": "2026-09-30T16:57:16.236Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 30,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 60,
+        "previous_offset": 0
+      },
+      "response_sha256": "0da36034ebe2857658404f7dcfe39dd7621a736c483369841250399f89d8d6df",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_002_offset_000030.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 60
+      },
+      "fetched_at": "2026-09-30T16:57:16.457Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 60,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 90,
+        "previous_offset": 30
+      },
+      "response_sha256": "ca2b68ea73f09544b184c1c02587cfb3b8f9aed48d5f58ab97b18e8de0068dbe",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_003_offset_000060.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 90
+      },
+      "fetched_at": "2026-09-30T16:57:16.563Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 90,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 120,
+        "previous_offset": 60
+      },
+      "response_sha256": "5f0cf3f9b03d688092393a146d24f1d6456150a781772e41e6f9e1ec06b1d5df",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_004_offset_000090.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 120
+      },
+      "fetched_at": "2026-09-30T16:57:16.712Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 120,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 150,
+        "previous_offset": 90
+      },
+      "response_sha256": "3941ed403df40fae9b55b131a312737f54d574154beda58dd3d342748d61f7b2",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_005_offset_000120.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 150
+      },
+      "fetched_at": "2026-09-30T16:57:16.833Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 150,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 180,
+        "previous_offset": 120
+      },
+      "response_sha256": "92421b59fb9b895aac70e3ca3f0152de8f20d16d7da9c8b2a450f309cd9bbac6",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_006_offset_000150.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 180
+      },
+      "fetched_at": "2026-09-30T16:57:16.984Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 180,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 210,
+        "previous_offset": 150
+      },
+      "response_sha256": "18f5b4ddc905758797df6b50eeccbb011e95795b26a218e40bcf0c22a64c5aa8",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_007_offset_000180.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 210
+      },
+      "fetched_at": "2026-09-30T16:57:17.088Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 210,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 240,
+        "previous_offset": 180
+      },
+      "response_sha256": "9229cf851958641c9520522794593459dafad6e4696a521d36eaca4c64ffab64",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_008_offset_000210.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 240
+      },
+      "fetched_at": "2026-09-30T16:58:47.837Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 240,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 270,
+        "previous_offset": 210
+      },
+      "response_sha256": "e3137ccccf06c59f270e74a2880bc2456e0b8cd325a0380dac14da41b4c9039d",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_009_offset_000240.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 270
+      },
+      "fetched_at": "2026-09-30T16:58:48.057Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 270,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 300,
+        "previous_offset": 240
+      },
+      "response_sha256": "84080601d3a756014698998137d0f1b3c60f79d44812fbae6640479955e2696e",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_010_offset_000270.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 300
+      },
+      "fetched_at": "2026-09-30T16:58:48.200Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 300,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 330,
+        "previous_offset": 270
+      },
+      "response_sha256": "6ec88f2559d8769e374d77d79b10520dfa083843803374e5a8637609ba9cf98f",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_011_offset_000300.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 330
+      },
+      "fetched_at": "2026-09-30T16:58:48.345Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 330,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 360,
+        "previous_offset": 300
+      },
+      "response_sha256": "8b7c9b678cb24954afb77c8263fc4be26216a8039181c41633d100448248c93b",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_012_offset_000330.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 360
+      },
+      "fetched_at": "2026-09-30T16:58:48.455Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 360,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 390,
+        "previous_offset": 330
+      },
+      "response_sha256": "db6d648a47e9204f7523447b6281d1e1f283e09004adb15873bfc83352226527",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_013_offset_000360.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 390
+      },
+      "fetched_at": "2026-09-30T16:58:48.575Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 390,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 420,
+        "previous_offset": 360
+      },
+      "response_sha256": "fc2a98ddbb4002f487175048bc6fd6ff2f0ebb5a0ca8eec43b222c8a46abce20",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_014_offset_000390.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 420
+      },
+      "fetched_at": "2026-09-30T16:58:48.701Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 420,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 450,
+        "previous_offset": 390
+      },
+      "response_sha256": "3f65b14168d2511948539652fca38be9e64a22b37a66c01e34c27d4220de3717",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_015_offset_000420.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 450
+      },
+      "fetched_at": "2026-09-30T16:59:22.275Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 450,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 480,
+        "previous_offset": 420
+      },
+      "response_sha256": "66b596d94aca67bdd879ce41e489fce1464c6852eb2483298fe2bd809e58c818",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_016_offset_000450.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 480
+      },
+      "fetched_at": "2026-09-30T16:59:22.465Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 480,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 510,
+        "previous_offset": 450
+      },
+      "response_sha256": "7961ed748a54b7d51f2556e659e50d2dceccf30ab276898eed8e0c7ad27c4858",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_017_offset_000480.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 510
+      },
+      "fetched_at": "2026-09-30T16:59:22.607Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 510,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 540,
+        "previous_offset": 480
+      },
+      "response_sha256": "45f33ea195724ca6b5684e963ca33d4906fde31e14ccfd7aff9f3978ff844f87",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_018_offset_000510.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 540
+      },
+      "fetched_at": "2026-09-30T16:59:22.743Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 540,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 570,
+        "previous_offset": 510
+      },
+      "response_sha256": "af34635220c9b31b7ce9849b02eec344eefa9ceb223138661585e7b8e4136af5",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_019_offset_000540.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 570
+      },
+      "fetched_at": "2026-09-30T16:59:22.860Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 570,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 600,
+        "previous_offset": 540
+      },
+      "response_sha256": "7b5a94faae7f136b22d225a31f67bd4254bfe2020292825e4cf308c7a3dab93e",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_020_offset_000570.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 600
+      },
+      "fetched_at": "2026-09-30T16:59:22.986Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 600,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 630,
+        "previous_offset": 570
+      },
+      "response_sha256": "950a7a5856fe24eb9afe9e325bfe09d42ee31c7f485a88df1ac3cdaacef76460",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_021_offset_000600.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 630
+      },
+      "fetched_at": "2026-09-30T16:59:23.116Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 630,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 660,
+        "previous_offset": 600
+      },
+      "response_sha256": "ee2e992731cd7fe03187f53e4d2a6f1eaf25d02fc20ee8006fe2a89e9c8bd377",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_022_offset_000630.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 660
+      },
+      "fetched_at": "2026-09-30T16:59:23.245Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 660,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 690,
+        "previous_offset": 630
+      },
+      "response_sha256": "7130b186e5aa8099fd92e8f4ee6d073ec4a803d9396f1890df426fbe9384e595",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_023_offset_000660.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 690
+      },
+      "fetched_at": "2026-09-30T16:59:23.457Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 690,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 720,
+        "previous_offset": 660
+      },
+      "response_sha256": "00ecef3e5cedb74924e9a90142ebda9ec4a42b4099cf5cd6c0ee1a6444d79e61",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_024_offset_000690.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 720
+      },
+      "fetched_at": "2026-09-30T16:59:23.671Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 720,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 750,
+        "previous_offset": 690
+      },
+      "response_sha256": "c33b5016434702e28c0bee2cade47bdce2c12135cac0542991e80a3e540b1505",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_025_offset_000720.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 750
+      },
+      "fetched_at": "2026-09-30T16:59:23.796Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 750,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 780,
+        "previous_offset": 720
+      },
+      "response_sha256": "e735e6298fd7f5ed1981e1d40662982d9a8d0edd1980634fa2cc8b2f21733c2d",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_026_offset_000750.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 780
+      },
+      "fetched_at": "2026-09-30T16:59:23.937Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 780,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 810,
+        "previous_offset": 750
+      },
+      "response_sha256": "6920ea31fb8cd734e9b4bcb0cc87d0a3efc7d694517d730b6d92b249b67bd833",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_027_offset_000780.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 810
+      },
+      "fetched_at": "2026-09-30T16:59:24.065Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 810,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 840,
+        "previous_offset": 780
+      },
+      "response_sha256": "cd671ecd3345670cf4a16862b7018568b8e500c3dcabe44c52ff79a90f3e3e96",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_028_offset_000810.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 840
+      },
+      "fetched_at": "2026-09-30T16:59:24.286Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 840,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 870,
+        "previous_offset": 810
+      },
+      "response_sha256": "885e557460a5c92f9762eaafff1776f449361e6e2eb9d8353b65f7b3a406206b",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_029_offset_000840.json",
+      "quota_headers": {}
+    },
+    {
+      "category": "ownership_disclosures",
+      "endpoint": "/v2/filings/",
+      "parameters": {
+        "start": "2000-01-01",
+        "end": "2026-09-30",
+        "limit": 30,
+        "offset": 870
+      },
+      "fetched_at": "2026-09-30T16:59:24.403Z",
+      "http_status": 200,
+      "record_count": 30,
+      "pagination": {
+        "total_count": 3836,
+        "showing": 30,
+        "limit": 30,
+        "offset": 870,
+        "has_next": true,
+        "has_previous": true,
+        "next_offset": 900,
+        "previous_offset": 840
+      },
+      "response_sha256": "92754bf6cf55addc35eb6a8200a01708dd0e98908eb390ac4671ddefef6b2dbb",
+      "raw_response_path": "research/sectors-archive/raw-pages/filings_030_offset_000870.json",
+      "quota_headers": {}
+    }
+  ],
+  "unique_records": 900,
+  "duplicates_removed": 0,
+  "stop_reason": "request_cap_30_no_balance_visibility",
+  "date_range_observed": {
+    "earliest": "2026-07-03",
+    "latest": "2026-09-30"
+  },
+  "finished_at": "2026-09-30T16:59:55.369Z",
+  "request_cap": 30,
+  "unique_symbols": 179,
+  "estimated_credits_consumed": 30,
+  "archive_integrity": {
+    "raw_page_count": 30,
+    "sha256_verified": 30,
+    "checksum_failures": []
+  }
+}
