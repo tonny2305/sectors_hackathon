@@ -59,5 +59,20 @@ describe('Telegram Alert Dispatcher (Section 18 & 26)', () => {
     const result = await sendTelegramNotification('12345:TEST', 'invalid-chat', 'TEST', mockFetch);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('TELEGRAM_HTTP_400');
+    expect(result.retryable).toBe(true);
+  });
+
+  it('does not retry when Telegram delivery outcome is ambiguous', async () => {
+    const serverError = await sendTelegramNotification(
+      '12345:TEST', '999999', 'TEST',
+      vi.fn<typeof fetch>(async () => new Response('server error', { status: 500 })),
+    );
+    const malformedResponse = await sendTelegramNotification(
+      '12345:TEST', '999999', 'TEST',
+      vi.fn<typeof fetch>(async () => Response.json({ ok: 'unknown' })),
+    );
+
+    expect(serverError).toMatchObject({ ok: false, retryable: false });
+    expect(malformedResponse).toMatchObject({ ok: false, retryable: false });
   });
 });

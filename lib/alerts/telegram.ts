@@ -66,7 +66,7 @@ export async function sendTelegramNotification(
   chatId: string,
   text: string,
   fetcher: typeof fetch = fetch,
-): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+): Promise<{ ok: boolean; messageId?: string; error?: string; retryable: boolean }> {
   if (!botToken.trim() || !chatId.trim()) {
     throw new TelegramError('MISSING_TELEGRAM_CREDENTIALS');
   }
@@ -87,18 +87,26 @@ export async function sendTelegramNotification(
 
     if (!response.ok) {
       const errorText = await response.text();
-      return { ok: false, error: `TELEGRAM_HTTP_${response.status}: ${errorText}` };
+      return {
+        ok: false,
+        error: `TELEGRAM_HTTP_${response.status}: ${errorText}`,
+        retryable: response.status < 500,
+      };
     }
 
-    const data = (await response.json()) as { ok: boolean; result?: { message_id: number } };
+    const data = (await response.json()) as { ok?: unknown; result?: { message_id?: number } };
+    if (data?.ok === false) return { ok: false, error: 'TELEGRAM_API_REJECTED', retryable: true };
+    if (data?.ok !== true) return { ok: false, error: 'TELEGRAM_INVALID_RESPONSE', retryable: false };
     return {
-      ok: data.ok,
+      ok: true,
       messageId: data.result?.message_id ? String(data.result.message_id) : undefined,
+      retryable: false,
     };
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : 'TELEGRAM_NETWORK_ERROR',
+      retryable: false,
     };
   }
 }

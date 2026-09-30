@@ -2,7 +2,7 @@ import 'server-only';
 import { z } from 'zod';
 import { normalizeFiling, type OwnershipEvent } from '../sectors/normalize.ts';
 import type { ApiCallLog } from '../sectors/client.ts';
-import type { MaterialityEvaluation, PriorHolderEvent } from '../materiality/types.ts';
+import type { MaterialityEvaluation, MaterialityState, PriorHolderEvent } from '../materiality/types.ts';
 
 export class StoreError extends Error {}
 
@@ -18,6 +18,13 @@ export interface HolderActivityStateRecord {
   same_direction_count_180d: number;
   cumulative_same_direction_delta_pp_180d: number;
   latest_materiality_state: string;
+}
+
+export interface TelegramDeliveryRecord {
+  alertId: string;
+  filingId: string;
+  event: OwnershipEvent;
+  evaluation: MaterialityEvaluation;
 }
 
 export class Store {
@@ -256,12 +263,92 @@ export class Store {
     }
   }
 
-  async updateAlertDeliveryStatus(filingId: string, status: 'SENT' | 'FAILED', messageId?: string): Promise<void> {
-    z.string().uuid().parse(filingId);
-    await this.request(`alerts?filing_id=eq.${filingId}`, 'PATCH', {
+  async getRetryableTelegramAlerts(): Promise<TelegramDeliveryRecord[]> {
+    const alerts = z.array(z.object({
+      id: z.string().uuid(),
+      filing_id: z.string().uuid(),
+      evaluation_id: z.string().uuid(),
+    })).parse(await this.request(
+      'alerts?channel=eq.telegram&delivery_status=in.(PENDING,FAILED)&select=id,filing_id,evaluation_id',
+      'GET',
+    ));
+    if (!alerts.length) return [];
+
+    const filingIds = [...new Set(alerts.map(alert => alert.filing_id))];
+    const evaluationIds = [...new Set(alerts.map(alert => alert.evaluation_id))];
+    const filings = z.array(z.object({
+      id: z.string().uuid(),
+      raw_payload_json: z.unknown(),
+      ownership_delta_pp: z.union([z.number(), z.string()]).nullable(),
+    })).parse(await this.request(`filings?id=in.(${filingIds.join(',')})&select=id,raw_payload_json,ownership_delta_pp`, 'GET'));
+    const evaluations = await this.request(`event_evaluations?id=in.(${evaluationIds.join(',')})&select=*`, 'GET') as Array<Record<string, unknown>>;
+    if (!Array.isArray(evaluations)) throw new StoreError('INVALID_EVALUATION_RESPONSE');
+
+    const eventsById = new Map(filings.map(row => [row.id, {
+      ...normalizeFiling(row.raw_payload_json),
+      ownership_delta_pp: row.ownership_delta_pp === null ? null : Number(row.ownership_delta_pp),
+    }]));
+    const evaluationsById = new Map(evaluations.map(row => [String(row.id), row]));
+    const result: TelegramDeliveryRecord[] = [];
+    for (const alert of alerts) {
+      const event = eventsById.get(alert.filing_id);
+      const row = evaluationsById.get(alert.evaluation_id);
+      if (!event || !row) throw new StoreError('TELEGRAM_ALERT_EVIDENCE_MISSING');
+
+      const state = row.materiality_state as MaterialityState;
+      if (state !== 'MATERIAL' && state !== 'STRUCTURAL') continue;
+      const delta = event.ownership_delta_pp;
+      result.push({
+        alertId: alert.id,
+        filingId: alert.filing_id,
+        event,
+        evaluation: {
+          materialityState: state,
+          reasonCodes: row.reason_codes_json as MaterialityEvaluation['reasonCodes'],
+          suppressionReasonCodes: row.suppression_reason_codes_json as MaterialityEvaluation['suppressionReasonCodes'],
+          features: {
+            ownershipDeltaPp: delta,
+            absOwnershipDeltaPp: delta === null ? null : Math.abs(delta),
+            relativePositionChange: row.relative_position_change as number | null,
+            newPosition: row.new_position as boolean,
+            nearExit: row.near_exit as boolean,
+            repeatCount30d: row.repeat_count_30d as number,
+            repeatCount90d: row.repeat_count_90d as number,
+            repeatCount180d: row.repeat_count_180d as number,
+            cumulativeSameDirectionDeltaPp180d: row.cumulative_same_direction_delta_pp_180d as number,
+            previousHolderEventTimestamp: row.previous_holder_event_timestamp as string | null,
+            previousMaterialityStateForHolder: row.previous_materiality_state_for_holder as MaterialityState | null,
+            escalatedFromPriorState: row.escalated_from_prior_state as boolean,
+            medianDailyLiquidityProxy20d: row.median_daily_liquidity_proxy_20d as number | null,
+            transactionToLiquidityProxy: row.transaction_to_liquidity_proxy as number | null,
+            contextUnavailable: row.context_unavailable as boolean,
+            enrichmentSkipped: row.enrichment_skipped as boolean,
+          },
+          engineVersion: row.engine_version as string,
+        },
+      });
+    }
+    return result;
+  }
+
+  async claimTelegramAlert(alertId: string): Promise<boolean> {
+    z.string().uuid().parse(alertId);
+    const response = await this.request(
+      `alerts?id=eq.${alertId}&channel=eq.telegram&delivery_status=in.(PENDING,FAILED)`,
+      'PATCH',
+      { delivery_status: 'UNKNOWN', sent_at: null, external_message_id: null },
+      true,
+    );
+    return Array.isArray(response) && response.length === 1;
+  }
+
+  async updateAlertDeliveryStatus(alertId: string, status: 'SENT' | 'FAILED' | 'UNKNOWN', messageId?: string): Promise<void> {
+    z.string().uuid().parse(alertId);
+    const response = await this.request(`alerts?id=eq.${alertId}&delivery_status=eq.UNKNOWN`, 'PATCH', {
       delivery_status: status,
-      sent_at: new Date().toISOString(),
-      external_message_id: messageId ?? null,
-    });
+      sent_at: status === 'SENT' ? new Date().toISOString() : null,
+      external_message_id: status === 'SENT' ? messageId ?? null : null,
+    }, true);
+    if (!Array.isArray(response) || response.length !== 1) throw new StoreError('ALERT_DELIVERY_UPDATE_NOT_CONFIRMED');
   }
 }

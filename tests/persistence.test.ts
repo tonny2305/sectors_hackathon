@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import filingExample from '../fixtures/filings.documented.json';
 import { normalizeFiling } from '../lib/sectors/normalize.ts';
+import { evaluateEvent } from '../lib/materiality/engine.ts';
 import { Store } from '../lib/db/store.ts';
 
 const filing = filingExample.results[0]!;
@@ -88,6 +89,111 @@ describe('actual PostgreSQL migration and ingestion RPC', () => {
     const params = [filingId, evaluation];
     await db.query("insert into alerts (filing_id, evaluation_id, channel, delivery_status) values ($1, $2, 'test-only', 'PENDING')", params);
     await expect(db.query("insert into alerts (filing_id, evaluation_id, channel, delivery_status) values ($1, $2, 'test-only', 'PENDING')", params)).rejects.toThrow();
+  });
+
+  it('claims Telegram alerts once and persists sent_at only after confirmed success', async () => {
+    const filingId = (await insert([{ ...filing, holder_name: 'Telegram Claim Test' }]))[0]!.id;
+    const evaluationId = (await db.query<{ id: string }>(`insert into event_evaluations
+      (filing_id, materiality_state, reason_codes_json, suppression_reason_codes_json,
+       context_unavailable, enrichment_skipped, engine_version)
+      values ($1, 'MATERIAL', '["TEST_ONLY"]', '[]', true, true, 'telegram-claim-test') returning id`, [filingId])).rows[0]!.id;
+    const alertId = (await db.query<{ id: string }>(`insert into alerts
+      (filing_id, evaluation_id, channel, delivery_status)
+      values ($1, $2, 'telegram', 'PENDING') returning id`, [filingId, evaluationId])).rows[0]!.id;
+
+    const fetcher = vi.fn<typeof fetch>(async (url, init) => {
+      const requestUrl = new URL(String(url));
+      const body = JSON.parse(String(init?.body)) as { delivery_status: string; sent_at: string | null; external_message_id: string | null };
+      const eligibleStatus = requestUrl.searchParams.get('delivery_status') === 'in.(PENDING,FAILED)';
+      const rows = eligibleStatus
+        ? await db.query(
+          `update alerts set delivery_status = 'UNKNOWN', sent_at = null, external_message_id = null
+           where id = $1 and channel = 'telegram' and delivery_status in ('PENDING', 'FAILED') returning id`,
+          [alertId],
+        )
+        : await db.query(
+          `update alerts set delivery_status = $1, sent_at = $2, external_message_id = $3
+           where id = $4 and delivery_status = 'UNKNOWN' returning id`,
+          [body.delivery_status, body.sent_at, body.external_message_id, alertId],
+        );
+      return Response.json(rows.rows);
+    });
+    const store = new Store('https://example.supabase.co', 'test-only-key', fetcher);
+
+    const claims = await Promise.all([store.claimTelegramAlert(alertId), store.claimTelegramAlert(alertId)]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    await store.updateAlertDeliveryStatus(alertId, 'FAILED');
+    let status = (await db.query<{ delivery_status: string; sent_at: string | null }>(
+      'select delivery_status, sent_at from alerts where id = $1', [alertId],
+    )).rows[0]!;
+    expect(status).toEqual({ delivery_status: 'FAILED', sent_at: null });
+
+    expect(await store.claimTelegramAlert(alertId)).toBe(true);
+    await store.updateAlertDeliveryStatus(alertId, 'SENT', 'telegram-message-1');
+    status = (await db.query<{ delivery_status: string; sent_at: string | null }>(
+      'select delivery_status, sent_at from alerts where id = $1', [alertId],
+    )).rows[0]!;
+    expect(status.delivery_status).toBe('SENT');
+    expect(status.sent_at).not.toBeNull();
+    await expect(store.updateAlertDeliveryStatus(alertId, 'FAILED')).rejects.toThrow('ALERT_DELIVERY_UPDATE_NOT_CONFIRMED');
+  });
+
+  it('rebuilds retryable Telegram delivery from persisted filing and evaluation evidence', async () => {
+    const raw = {
+      ...filing,
+      symbol: 'NSSS.JK',
+      timestamp: '2026-09-24T10:30:00',
+      holder_name: 'Telegram Retry Evidence',
+      share_percentage_before: 40.17,
+      share_percentage_after: 42.73,
+      holding_before: 9559919000,
+      holding_after: 10169179100,
+      amount_transaction: 609260100,
+    };
+    const event = normalizeFiling(raw);
+    const evaluation = evaluateEvent({ event, enrichmentSkipped: true });
+    const persistedEvent = { ...event, ownership_delta_pp: evaluation.features.ownershipDeltaPp };
+    const alertId = randomUUID();
+    const filingId = randomUUID();
+    const evaluationId = randomUUID();
+    const features = evaluation.features;
+    const fetcher = vi.fn<typeof fetch>(async url => {
+      const path = String(url).split('/rest/v1/')[1] || '';
+      if (path.startsWith('alerts?')) return Response.json([{ id: alertId, filing_id: filingId, evaluation_id: evaluationId }]);
+      if (path.startsWith('filings?')) return Response.json([{
+        id: filingId,
+        raw_payload_json: raw,
+        ownership_delta_pp: evaluation.features.ownershipDeltaPp,
+      }]);
+      if (path.startsWith('event_evaluations?')) return Response.json([{
+        id: evaluationId,
+        materiality_state: evaluation.materialityState,
+        reason_codes_json: evaluation.reasonCodes,
+        suppression_reason_codes_json: evaluation.suppressionReasonCodes,
+        relative_position_change: features.relativePositionChange,
+        new_position: features.newPosition,
+        near_exit: features.nearExit,
+        repeat_count_30d: features.repeatCount30d,
+        repeat_count_90d: features.repeatCount90d,
+        repeat_count_180d: features.repeatCount180d,
+        cumulative_same_direction_delta_pp_180d: features.cumulativeSameDirectionDeltaPp180d,
+        previous_holder_event_timestamp: features.previousHolderEventTimestamp,
+        previous_materiality_state_for_holder: features.previousMaterialityStateForHolder,
+        escalated_from_prior_state: features.escalatedFromPriorState,
+        median_daily_liquidity_proxy_20d: features.medianDailyLiquidityProxy20d,
+        transaction_to_liquidity_proxy: features.transactionToLiquidityProxy,
+        context_unavailable: features.contextUnavailable,
+        enrichment_skipped: features.enrichmentSkipped,
+        engine_version: evaluation.engineVersion,
+      }]);
+      return new Response('Not found', { status: 404 });
+    });
+    const store = new Store('https://example.supabase.co', 'test-only-key', fetcher);
+
+    const retryable = await store.getRetryableTelegramAlerts();
+
+    expect(retryable).toEqual([{ alertId, filingId, event: persistedEvent, evaluation }]);
+    expect(fetcher).toHaveBeenCalledTimes(3);
   });
 
   it('denies browser roles table and RPC access, permits the service role', async () => {
