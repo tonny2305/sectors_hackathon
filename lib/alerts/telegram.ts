@@ -96,7 +96,9 @@ export async function sendTelegramNotification(
 
     const data = (await response.json()) as { ok?: unknown; result?: { message_id?: number } };
     if (data?.ok === false) return { ok: false, error: 'TELEGRAM_API_REJECTED', retryable: true };
-    if (data?.ok !== true) return { ok: false, error: 'TELEGRAM_INVALID_RESPONSE', retryable: false };
+    if (data?.ok !== true || typeof data.result?.message_id !== 'number') {
+      return { ok: false, error: 'TELEGRAM_INVALID_RESPONSE', retryable: false };
+    }
     return {
       ok: true,
       messageId: data.result?.message_id ? String(data.result.message_id) : undefined,

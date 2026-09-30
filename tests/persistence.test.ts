@@ -158,14 +158,18 @@ describe('actual PostgreSQL migration and ingestion RPC', () => {
     const evaluationId = randomUUID();
     const features = evaluation.features;
     const fetcher = vi.fn<typeof fetch>(async url => {
-      const path = String(url).split('/rest/v1/')[1] || '';
-      if (path.startsWith('alerts?')) return Response.json([{ id: alertId, filing_id: filingId, evaluation_id: evaluationId }]);
-      if (path.startsWith('filings?')) return Response.json([{
+      const requestUrl = new URL(String(url));
+      const path = requestUrl.pathname.split('/rest/v1/')[1] || '';
+      if (path === 'alerts') {
+        expect(requestUrl.searchParams.get('id')).toBe(`eq.${alertId}`);
+        return Response.json([{ id: alertId, filing_id: filingId, evaluation_id: evaluationId }]);
+      }
+      if (path === 'filings') return Response.json([{
         id: filingId,
         raw_payload_json: raw,
         ownership_delta_pp: evaluation.features.ownershipDeltaPp,
       }]);
-      if (path.startsWith('event_evaluations?')) return Response.json([{
+      if (path === 'event_evaluations') return Response.json([{
         id: evaluationId,
         materiality_state: evaluation.materialityState,
         reason_codes_json: evaluation.reasonCodes,
@@ -190,7 +194,7 @@ describe('actual PostgreSQL migration and ingestion RPC', () => {
     });
     const store = new Store('https://example.supabase.co', 'test-only-key', fetcher);
 
-    const retryable = await store.getRetryableTelegramAlerts();
+    const retryable = await store.getRetryableTelegramAlerts(alertId);
 
     expect(retryable).toEqual([{ alertId, filingId, event: persistedEvent, evaluation }]);
     expect(fetcher).toHaveBeenCalledTimes(3);

@@ -263,13 +263,14 @@ export class Store {
     }
   }
 
-  async getRetryableTelegramAlerts(): Promise<TelegramDeliveryRecord[]> {
+  async getRetryableTelegramAlerts(alertId?: string): Promise<TelegramDeliveryRecord[]> {
+    const alertFilter = alertId ? `id=eq.${z.string().uuid().parse(alertId)}&` : '';
     const alerts = z.array(z.object({
       id: z.string().uuid(),
       filing_id: z.string().uuid(),
       evaluation_id: z.string().uuid(),
     })).parse(await this.request(
-      'alerts?channel=eq.telegram&delivery_status=in.(PENDING,FAILED)&select=id,filing_id,evaluation_id',
+      `alerts?${alertFilter}channel=eq.telegram&delivery_status=in.(PENDING,FAILED)&select=id,filing_id,evaluation_id`,
       'GET',
     ));
     if (!alerts.length) return [];

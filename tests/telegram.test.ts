@@ -71,8 +71,13 @@ describe('Telegram Alert Dispatcher (Section 18 & 26)', () => {
       '12345:TEST', '999999', 'TEST',
       vi.fn<typeof fetch>(async () => Response.json({ ok: 'unknown' })),
     );
+    const missingMessageId = await sendTelegramNotification(
+      '12345:TEST', '999999', 'TEST',
+      vi.fn<typeof fetch>(async () => Response.json({ ok: true, result: {} })),
+    );
 
     expect(serverError).toMatchObject({ ok: false, retryable: false });
     expect(malformedResponse).toMatchObject({ ok: false, retryable: false });
+    expect(missingMessageId).toMatchObject({ ok: false, retryable: false });
   });
 });
