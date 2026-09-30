@@ -7,7 +7,6 @@ import { evaluateEvent, ENGINE_VERSION } from '../materiality/engine.ts';
 import { computeAttentionMetrics } from '../materiality/metrics.ts';
 import { formatTelegramMessage, sendTelegramNotification } from '../alerts/telegram.ts';
 import type { AttentionMetrics, MaterialityEvaluation } from '../materiality/types.ts';
-import type { DailyRecord } from '../sectors/schemas.ts';
 
 export interface MonitorCycleOptions {
   startDate?: string;
@@ -106,7 +105,6 @@ export async function runMonitoringCycle(
       isDuplicatePush?: boolean;
     }> = [];
 
-    const dailyCache = new Map<string, DailyRecord[]>();
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
     let deliveryHealthy = Boolean(botToken && chatId);
@@ -128,44 +126,12 @@ export async function runMonitoringCycle(
         event.source_timestamp,
       );
 
-      // 6. Base evaluation without daily call (Credit-Aware)
-      let evaluation = evaluateEvent({
+      // 6. Frozen B2 policy: daily liquidity must not change alert decisions.
+      const evaluation = evaluateEvent({
         event,
         priorHolderEvents: priorEvents,
         enrichmentSkipped: true,
       });
-
-      // 7. Conditional Daily Enrichment (Credit-Aware Routing)
-      // Call daily ONLY if base state is WATCH or candidate for liquidity escalation
-      const isCandidate =
-        evaluation.materialityState === 'WATCH' ||
-        (event.transaction_value_idr !== null && event.transaction_value_idr > 0 && evaluation.materialityState === 'SILENT' && (evaluation.features.absOwnershipDeltaPp ?? 0) >= 0.10);
-
-      if (isCandidate) {
-        const cacheKey = `${event.symbol}:${event.source_date}`;
-        let dailyRecords = dailyCache.get(cacheKey);
-        if (!dailyRecords) {
-          try {
-            // Calculate 30-day window ending on event date
-            const eventDateMs = Date.parse(event.source_date);
-            const start30d = new Date(eventDateMs - 30 * 86_400_000).toISOString().slice(0, 10);
-            const dailyRes = await client.daily(event.symbol, start30d, event.source_date);
-            dailyRecords = dailyRes.records;
-            dailyCache.set(cacheKey, dailyRecords);
-          } catch {
-            dailyRecords = [];
-          }
-        }
-
-        if (dailyRecords && dailyRecords.length > 0) {
-          evaluation = evaluateEvent({
-            event,
-            priorHolderEvents: priorEvents,
-            dailyRecords,
-            enrichmentSkipped: false,
-          });
-        }
-      }
 
       // 8. Persist evaluation
       const evalId = await store.saveEvaluation(dbId, evaluation);
