@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../lib/db/store.ts';
 import { runMonitoringCycle } from '../lib/automation/monitor.ts';
+import { evaluateEvent } from '../lib/materiality/engine.ts';
+import { normalizeFiling } from '../lib/sectors/normalize.ts';
 import filingFixture from '../fixtures/filings.documented.json';
 
 const migration = await readFile(
@@ -319,7 +321,11 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
     expect((await db.query('select id from alerts')).rows).toHaveLength(1);
   });
 
-  it('credit-aware routing skips daily API for silent non-candidate events', async () => {
+  it.each([
+    [0.01, 'SILENT'],
+    [0.15, 'SILENT'],
+    [0.30, 'WATCH'],
+  ] as const)('frozen B2 keeps a %s pp liquidity candidate %s without daily calls or alerts', async (delta, state) => {
     const rawFiling = filingFixture.results[0]!;
 
     const silentOnlyPayload = {
@@ -328,13 +334,13 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
           ...rawFiling,
           symbol: 'BBCA.JK',
           timestamp: '2026-09-24T12:00:00',
-          holder_name: 'Silent Tiny Mover',
-          share_percentage_before: 2.0,
-          share_percentage_after: 2.01,
-          holding_before: 2000000,
-          holding_after: 2010000,
-          amount_transaction: 10000,
-          transaction_value: 50000,
+          holder_name: `Liquidity Candidate ${delta}`,
+          share_percentage_before: 10.0,
+          share_percentage_after: 10.0 + delta,
+          holding_before: 10000000,
+          holding_after: 10000000 + delta * 1000000,
+          amount_transaction: delta * 1000000,
+          transaction_value: 600000000,
         },
       ],
       pagination: {
@@ -346,6 +352,14 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
     };
 
     let dailyApiCalls = 0;
+    const dailyRecords = [{ symbol: 'BBCA.JK', date: '2026-09-24', close: 1000,
+      open: 1000, high: 1000, low: 1000, volume: 1000, market_cap: 10000000000 }];
+    const event = normalizeFiling(silentOnlyPayload.results[0]!);
+    const frozenEvaluation = evaluateEvent({ event, enrichmentSkipped: true });
+    expect(frozenEvaluation.materialityState).toBe(state);
+    const enriched = evaluateEvent({ event, dailyRecords, enrichmentSkipped: false });
+    expect(enriched.materialityState).toBe('MATERIAL');
+    expect(enriched.reasonCodes).toContain('TRANSACTION_VALUE_GE_50PCT_MEDIAN_DAILY_PROXY');
 
     const mockFetch = vi.fn<typeof fetch>(async (url, options) => {
       const urlStr = String(url);
@@ -383,12 +397,13 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
       }
       if (urlStr.includes('/v2/daily/')) {
         dailyApiCalls++;
-        return Response.json([]);
+        return Response.json(dailyRecords);
       }
       return new Response('Not found', { status: 404 });
     });
 
     const store = new Store('https://example.supabase.co', 'test-only-key', mockFetch);
+    const queueAlert = vi.spyOn(store, 'queueAlert');
     const result = await runMonitoringCycle(store, 'test-key', {
       startDate: '2026-09-24',
       endDate: '2026-09-24',
@@ -397,8 +412,12 @@ describe('Autonomous Monitoring Orchestration (Phase 3)', () => {
     });
 
     expect(result.status).toBe('COMPLETE');
-    expect(result.attentionMetrics.silentCount).toBe(1);
-    expect(dailyApiCalls).toBe(0); // Daily lookup was skipped, saving credit!
+    expect(result.evaluations).toHaveLength(1);
+    expect(result.evaluations[0]!.evaluation).toEqual(frozenEvaluation);
+    expect(result.attentionMetrics.materialCount).toBe(0);
+    expect(result.attentionMetrics.structuralCount).toBe(0);
+    expect(queueAlert).not.toHaveBeenCalled();
+    expect(dailyApiCalls).toBe(0);
   });
 
   it('marks status PARTIAL with warning when page cap limit is reached', async () => {
