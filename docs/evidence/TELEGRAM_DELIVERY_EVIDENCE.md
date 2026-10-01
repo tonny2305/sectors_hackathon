@@ -91,4 +91,3 @@ No second Telegram send was initiated by the delivery path. The persisted status
 - `npm run typecheck`: PASS
 - `git diff --check`: PASS
 - Secret scan: PASS — 0 tracked env files, 0 high-confidence literal secret matches
-
