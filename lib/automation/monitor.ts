@@ -102,11 +102,10 @@ export async function runMonitoringCycle(
       event: OwnershipEvent;
       evaluation: MaterialityEvaluation;
       pushSent?: boolean;
-      isDuplicatePush?: boolean;
     }> = [];
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+    const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
     let deliveryHealthy = Boolean(botToken && chatId);
 
     for (const { event } of sortedFilings) {
@@ -136,39 +135,9 @@ export async function runMonitoringCycle(
       // 8. Persist evaluation
       const evalId = await store.saveEvaluation(dbId, evaluation);
 
-      // 9. Queue & Dispatch alert if MATERIAL or STRUCTURAL
-      let pushSent = false;
+      // 9. Queue alert if MATERIAL or STRUCTURAL; dispatch from the persisted queue below.
       if (evaluation.materialityState === 'MATERIAL' || evaluation.materialityState === 'STRUCTURAL') {
-        const isQueued = await store.queueAlert(dbId, evalId, 'telegram');
-
-        // If newly queued and Telegram credentials are present, send notification
-        if (isQueued && botToken && chatId) {
-          try {
-            const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
-            const message = formatTelegramMessage({
-              event,
-              evaluation,
-              appBaseUrl,
-              filingId: dbId,
-            });
-            const sendRes = await sendTelegramNotification(
-              botToken,
-              chatId,
-              message,
-              options.fetch,
-            );
-            if (sendRes.ok) {
-              await store.updateAlertDeliveryStatus(dbId, 'SENT', sendRes.messageId);
-              pushSent = true;
-            } else {
-              await store.updateAlertDeliveryStatus(dbId, 'FAILED');
-              deliveryHealthy = false;
-            }
-          } catch {
-            await store.updateAlertDeliveryStatus(dbId, 'FAILED');
-            deliveryHealthy = false;
-          }
-        }
+        await store.queueAlert(dbId, evalId, 'telegram');
       }
 
       // 10. Update Holder Activity State Table
@@ -196,11 +165,40 @@ export async function runMonitoringCycle(
         holderName: event.holder_name,
         event,
         evaluation,
-        pushSent,
       });
     }
 
+    const deliveredFilingIds = new Set<string>();
+    if (botToken && chatId) {
+      const retryableAlerts = await store.getRetryableTelegramAlerts();
+      for (const alert of retryableAlerts) {
+        try {
+          const message = formatTelegramMessage({
+            event: alert.event,
+            evaluation: alert.evaluation,
+            appBaseUrl: process.env.APP_BASE_URL || 'http://localhost:3000',
+            filingId: alert.filingId,
+          });
+          if (!await store.claimTelegramAlert(alert.alertId)) continue;
+          const sendResult = await sendTelegramNotification(botToken, chatId, message, options.fetch);
+          if (sendResult.ok) {
+            await store.updateAlertDeliveryStatus(alert.alertId, 'SENT', sendResult.messageId);
+            deliveredFilingIds.add(alert.filingId);
+          } else {
+            await store.updateAlertDeliveryStatus(alert.alertId, sendResult.retryable ? 'FAILED' : 'UNKNOWN');
+            deliveryHealthy = false;
+          }
+        } catch {
+          // Keep the claim UNKNOWN if the delivery outcome or status write is uncertain.
+          deliveryHealthy = false;
+        }
+      }
+    }
+
     // 11. Compute Attention Intelligence Metrics
+    for (const result of evaluatedResults) {
+      if (deliveredFilingIds.has(result.filingId)) result.pushSent = true;
+    }
     const attentionMetrics = computeAttentionMetrics({
       eligibleNewFilings: evaluatedResults.length,
       evaluations: evaluatedResults,
