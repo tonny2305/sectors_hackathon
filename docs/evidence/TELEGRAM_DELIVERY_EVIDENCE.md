@@ -1,6 +1,6 @@
 # Telegram Delivery Evidence
 
-**Status: LIVE DELIVERY AND PERSISTED IDEMPOTENCY PROOF CAPTURED; SCREENSHOT PENDING**
+**Status: LIVE DELIVERY, PERSISTED IDEMPOTENCY, AND GROUP SCREENSHOT EVIDENCE SECURED**
 
 This controlled proof used the delivery-only command for one persisted alert. It did not run `runMonitoringCycle` and did not load or call the Sectors API.
 
@@ -76,14 +76,19 @@ No second Telegram send was initiated by the delivery path. The persisted status
 
 ## Screenshot Evidence
 
-The in-app browser was unavailable during this run, so a screenshot of the Telegram group message could not be captured. No fabricated screenshot or visual claim is included.
+![Telegram group delivery](telegram/telegram-group-delivery-20261001.png)
+
+- Screenshot file: `docs/evidence/telegram/telegram-group-delivery-20261001.png`
+- Screenshot group title: `IDX Ownership Sentinel`
+- Screenshot local message time: approximately `19:43 WIB`
+- Persisted UTC `sent_at`: `2026-10-01T12:43:51.59+00:00`
+- Converted local time: approximately `19:43 WIB` (`UTC+07:00`)
+- The visible Telegram message timestamp is consistent with the persisted delivery evidence.
 
 ## Test & Build Verification
 
-Pending after this evidence update:
-
-- `npm test`
-- `npm run typecheck`
-- `git diff --check`
-- secret scan
+- `npm test`: PASS — 14 test files, 110 tests
+- `npm run typecheck`: PASS
+- `git diff --check`: PASS
+- Secret scan: PASS — 0 tracked env files, 0 high-confidence literal secret matches
 
