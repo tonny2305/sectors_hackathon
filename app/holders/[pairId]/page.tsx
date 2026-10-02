@@ -3,9 +3,11 @@ import { notFound } from 'next/navigation';
 import { ARCHIVE_COVERAGE, ARCHIVE_LABEL, companyLabel, getTimeline } from '../../../lib/archive/signalkeeper.ts';
 import { delta, percent } from '../../../lib/presentation.ts';
 
+function decoded(segment: string): string { try { return decodeURIComponent(segment); } catch { return segment; } }
+
 export default async function HolderPage({ params }: { params: Promise<{ pairId: string }> }) {
   const { pairId } = await params;
-  const result = getTimeline(pairId);
+  const result = getTimeline(decoded(pairId));
   if (!result) notFound();
   const { timeline, events } = result;
   const first = events[0]!;

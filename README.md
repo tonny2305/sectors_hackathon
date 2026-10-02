@@ -1,113 +1,128 @@
-<div align="center">
+# SIGNALKEEPER
 
-<img src="./public/icon.png" alt="Autonomous Ownership Materiality Sentinel icon" width="80" height="80" />
+> SIGNALKEEPER turns Indonesian ownership disclosures into understandable ownership changes, holder history, transaction context, and stateful attention triage.
 
-# Autonomous Ownership Materiality Sentinel
+**Sectors Hackathon 2026 — Track 02: Automation & Workflows**
 
-**Ownership disclosure triage for Indonesian equities**<br/>
-Sectors Hackathon 2026 · Track 2: Automation & Workflows
+Built for equity researchers, financial journalists, governance researchers, and engaged minority shareholders. A raw filing list makes readers compare stake percentages, reconstruct a holder's activity, and inspect transaction context one disclosure at a time. SIGNALKEEPER brings those facts and the observed holder-company history together so people can decide what merits review. It provides information and analysis, not investment, legal, or compliance advice.
 
-[Architecture](#architecture) · [Materiality](#materiality-and-explainable-silence) · [Evidence](#verified-evidence) · [Setup](#setup) · [Security](#security-and-limitations)
+Sectors is fundamental: its ownership-disclosure API supplies the filings that the production monitoring workflow validates, deduplicates, evaluates against holder history, persists, and may route to Telegram. The historical product archive is also derived from Sectors disclosures.
 
-</div>
+## Product
 
-An ownership filing is useful only when a researcher can tell whether it changes the picture. A feed that pushes every filing spends attention on routine changes; a silent filter is hard to trust. This project turns Sectors ownership disclosures into **reviewable decisions**: it remembers each watched holder's prior activity, classifies the current event, and records why it alerted or stayed silent. It provides analysis, not investment recommendations.
+- **Signals Feed (`/`)** — browse a frozen, historical archive of ownership disclosures with factual change badges and before/after percentages.
+- **Event Detail (`/signals/[id]`)** — inspect the source disclosure, reported transaction fields, ownership change, provenance, and factual context.
+- **Holder Timeline (`/holders/[pairId]`)** — review the observed chronological disclosures for a holder-company pair within the archive.
+- **Configured Monitoring (`/watchlist`)** — view the operator-configured symbols. The public interface does not let visitors edit the watchlist. Those symbols can enter the separate monitoring workflow below.
+
+### Two distinct systems
+
+**A. Historical exploration.** The Feed, Event Detail, and Holder Timeline read a frozen Sectors archive: **900 observed disclosures**, **179 symbols**, covering **3 Jul–30 Sep 2026**. It contains **85** crossings of the 5% line, **90** ownership changes of at least 5 percentage points, and **343** observed holder-company timelines. This is a bounded archive slice, not the entire Sectors corpus, not live coverage, and not an input to or calibration set for B2.
+
+**B. Autonomous monitoring.** The production path is:
+
+```text
+weekday schedule → Sectors API → filing deduplication → holder memory
+→ sealed B2 triage → persisted evaluation/alert → optional Telegram delivery
+```
+
+The recurring weekday schedule is configured in [`.github/workflows/scheduled-monitor.yml`](.github/workflows/scheduled-monitor.yml). A schedule is configuration, not proof of continuous or current coverage; Sectors availability, API credits, watchlist configuration, and run outcomes affect what is monitored. Do not infer live coverage from the historical archive.
+
+### Stateful triage example
+
+For the same frozen `NSSS.JK` event, **Samuel Sekuritas Indonesia** moved from **21.64% to 22.51% (+0.87 pp)**. With only the current event, B2 evaluates it as `WATCH`; with its actual frozen holder history restored, it becomes `MATERIAL`. The current event is identical in both evaluations; only legitimate historical context changes. This is a reproducible ablation, not the archive's separate Samuel Tumbuh Bersama example.
+
+### Sealed attention evaluation
+
+On the sealed set of **117 persisted filings**, alert-all produces **117 interruptions**; B2 produces **64**, a **45.30% reduction**, while retaining **18/18** human-consensus immediate-attention cases.
+
+**This result applies to the sealed 117-filing evaluation and is not a claim about all IDX disclosures.**
+
+The measured result and methodology are recorded on the [`attention-benchmark` branch](https://github.com/tonny2305/sectors_hackathon/tree/attention-benchmark/research/attention-benchmark/results), including [`SEALED_HUMAN_EVALUATION.md`](https://github.com/tonny2305/sectors_hackathon/blob/attention-benchmark/research/attention-benchmark/results/SEALED_HUMAN_EVALUATION.md). It is separate from the 900-event archive.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A[GitHub Actions weekday schedule<br/>or manual CLI] --> B[Sectors filings API]
-    B --> C[Supabase: atomic fingerprint deduplication]
-    C --> D{Active watchlist?}
-    D -->|Yes| E[Prior holder history<br/>30 / 90 / 180 days]
-    E --> F[Four-state materiality engine]
-    F -->|Candidate only| G[Optional Sectors daily<br/>liquidity proxy]
-    G --> F
-    F --> H[Persist evaluation, reasons<br/>and run/API-call logs]
-    H --> I[Next.js dashboard, alerts,<br/>silence log and timeline]
-    H -->|MATERIAL / STRUCTURAL| J[Queue alert]
-    J -->|If configured| K[Telegram delivery]
-```
+The monitoring worker obtains bounded filing pages from the Sectors API, validates and normalizes the responses, atomically deduplicates filings in Supabase, loads prior events for configured holder-company pairs, and evaluates eligible new filings with the frozen B2 engine. Evaluations, reasons, alerts, run records, and API-call logs are persisted. Eligible alerts may then be delivered to Telegram.
 
-The worker bounds filing pages and Sectors API attempts, processes filings in timestamp order, and can recover a filing that was ingested but not evaluated in an earlier run. Supabase stores the original filing, the decision, alert state, and execution evidence. The web app reads those persisted records; GitHub Actions runs the production schedule.
+The archive is a separate static JSON artifact compiled offline from a frozen archival Git ref. The public archive routes read this artifact; they do not call Sectors, write to Supabase, or run the B2 engine. No archive events are imported into the sealed 117-filing evaluation.
 
-## Materiality and explainable silence
+### Verified operating evidence
 
-The deterministic engine assigns one of four states. These are classification rules, not calibrated investment signals.
+- **Scheduled unattended evidence:** the [documented scheduled GitHub Actions run](https://github.com/tonny2305/sectors_hackathon/actions/runs/36023434752) completed on 24 September 2026 and persisted as `SCHEDULED_CRON`. It scanned 8 filings, found 1 eligible `STRUCTURAL` event, made 1 Sectors API attempt, and queued 1 alert. The run began about 4 hours 23 minutes after its scheduled slot. This proves one unattended execution, not schedule punctuality or continuous coverage.
+- **Manual functional evidence:** the two 30 September 2026 runs in [`FINAL_SECTORS_LIVE_EVIDENCE.md`](docs/evidence/FINAL_SECTORS_LIVE_EVIDENCE.md) were manually triggered with `workflow_dispatch`. They scanned 18 records, first producing 9 new / 9 deduplicated and 1 `MATERIAL` evaluation, then 0 new / 18 deduplicated. These are ingestion, deduplication, and rerun evidence—not scheduled unattended evidence.
+- **Separate Telegram proof:** [`TELEGRAM_DELIVERY_EVIDENCE.md`](docs/evidence/TELEGRAM_DELIVERY_EVIDENCE.md) documents a persisted `SENT` delivery and a repeated attempt recorded `SKIPPED`. The exact source filing is not established in this repository evidence. This proof is not claimed to be the archive NSSS examples, the history-ablation event, or the manual live-run alert. An ambiguous network outcome may be recorded as `UNKNOWN`; the system does not promise formal exactly-once delivery.
+- **Statefulness proof:** [`HISTORY_ABLATION_PROOF.md`](docs/evidence/HISTORY_ABLATION_PROOF.md) reproduces the `WATCH` → `MATERIAL` result offline from the frozen B2 fixture.
 
-| State | Current rule examples | Result |
-| --- | --- | --- |
-| `STRUCTURAL` | Stake shift of at least 5 percentage points, or a position reduced to 20% or less of its previous size | Persist and queue an alert |
-| `MATERIAL` | Stake shift of at least 1 percentage point, relative share-position change of at least 10%, three same-direction holder events within 180 days, or two independent `WATCH` dimensions | Persist and queue an alert |
-| `WATCH` | One watch dimension, such as a 0.25-point stake shift or two same-direction events within 180 days | Persist with suppression reasons; no push |
-| `SILENT` | No material or watch rule met | Persist with suppression reasons; no push |
+The public product deployment URL has not been verified.
 
-An explicit new position can also be `MATERIAL`. When transaction value and daily data are available, the engine compares value with the median of up to 20 daily `close × volume` observations; that is a **liquidity proxy**, not exact traded turnover. Daily data is requested only for candidates. Share-based relative position change is calculated only when the share counts exist; missing values are not treated as zero.
+## Routes
 
-For evaluated watchlist filings, `WATCH` and `SILENT` retain reason codes such as `BELOW_PUSH_THRESHOLD`, `SMALL_ABSOLUTE_CHANGE`, and `NO_REPEAT_PATTERN`. Researchers can inspect the filing timestamp, source link when supplied, decision, and prior-holder timeline. Filings outside the active watchlist are ingested but not materiality-evaluated by this worker.
-
-## Autonomous workflow
-
-[The scheduled workflow](.github/workflows/scheduled-monitor.yml) runs on weekdays at **10:30, 12:30, 15:30, and 18:30 WIB** (`03:30, 05:30, 08:30, 11:30 UTC`). GitHub `workflow_dispatch` provides a manual recovery path. The defaults are three filing pages and 15 Sectors API attempts per run. A page-capped run can be `PARTIAL`; inspect the run log before claiming complete coverage. GitHub schedules can be delayed or skipped, so configuration alone is not proof of execution.
-
-The worker queues `MATERIAL` and `STRUCTURAL` alerts in Supabase. Telegram delivery is optional and disabled when its credentials are absent. Without delivery, the app does not report an invented interruption-reduction or duplicate-alert rate: those metrics need actual sends. Run records include status, scanned/new/eligible counts, suppression and alert counts, latency, estimated credits, and errors.
-
-## Verified evidence
-
-The [first independently verified GitHub scheduled run](https://github.com/tonny2305/sectors_hackathon/actions/runs/36023434752) completed on **24 September 2026** and persisted as `SCHEDULED_CRON`. It scanned **8 filings**, found **1 eligible `STRUCTURAL` event**, made **1 Sectors API attempt** (about **1 estimated credit**), and queued **1 alert** without Telegram delivery. GitHub recorded its start at 15:53 UTC, roughly 4 hours 23 minutes after the 11:30 UTC slot. This proves one unattended execution, not schedule punctuality or continuous coverage.
-
-The hosted Supabase schema and a bounded live Sectors ingestion have been checked; repeating the ingestion created no duplicate filings, evaluations, or alerts. Tests, typecheck, and production build passed at the audited baseline. The hosted RLS policies, constraints, and RPC privileges still need an administrative review with [the read-only audit SQL](supabase/verify_security.sql). A public web deployment has not been verified. No screenshots or demonstration metrics are presented as live evidence.
-
-## Web app
-
-| Route | What it shows |
+| Route | Purpose |
 | --- | --- |
-| `/` | Attention summary, recent decisions, and recorded runs |
-| `/alerts` | Persisted `MATERIAL` and `STRUCTURAL` events |
-| `/alerts/[id]` | Filing evidence, decision reasons, and prior-holder timeline |
-| `/suppressed` | `WATCH` and `SILENT` decisions with suppression reasons |
-| `/runs` | Execution status, counts, latency, and estimated credit usage |
-| `/watchlist` | Hosted symbols; edits require a configured admin token |
-| `/api/health` | Database connectivity and configuration status; scheduled-run status reflects recorded rows |
+| `/` | Historical Signals Feed |
+| `/signals/[id]` | Historical Event Detail |
+| `/holders/[pairId]` | Historical Holder Timeline |
+| `/watchlist` | Operator-configured monitoring symbols and workflow evidence |
+| `/runs` | Operational run log and trigger/coverage evidence |
+| `/alerts`, `/alerts/[id]`, `/suppressed` | Persisted operational evidence routes |
+| `/api/health` | Configuration and database health endpoint |
 
-Empty views show empty states, and unavailable rates show `N/A`; they do not display sample filings or claim successful delivery.
+The operational routes are not the historical archive and do not turn archive disclosures into live monitoring results.
 
-## Setup
+## Run locally
 
-Requires **Node.js 24+**, a Sectors API key, and a Supabase project.
+Requires Node.js 24 or newer.
 
-```bash
+```sh
 npm ci
-cp .env.example .env
-```
-
-Set `SECTORS_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in `.env`. Apply [the database migration](supabase/migrations/202609240001_data_core.sql) in Supabase and configure at least one active watchlist symbol. Keep `.env` out of Git.
-
-```bash
 npm run dev
-npm run monitor -- 2026-09-24 2026-09-24
-npm run ingest -- 2026-09-24 2026-09-24
 ```
 
-`monitor` evaluates watched filings; `ingest` performs data-core ingestion without materiality evaluation. Omit the monitor dates to use the current Jakarta date. For GitHub Actions, set repository secrets `SECTORS_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`. Optional Telegram delivery requires secrets `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`, plus repository variable `APP_BASE_URL` for public event links. The page and attempt caps can be set with repository variables `MAX_FILINGS_PAGES_PER_RUN` and `MAX_SECTORS_API_ATTEMPTS_PER_RUN`.
+The historical archive pages use the checked-in artifact and need no Sectors API call. The Watchlist and operational views require a configured Supabase project. Copy [`.env.example`](.env.example) to `.env` and configure only the environment values needed for the local service:
 
-For a read-only Vercel web deployment, set only `NEXT_PUBLIC_SUPABASE_URL` and server-side `SUPABASE_SERVICE_ROLE_KEY`; the web app does not need `SECTORS_API_KEY` while GitHub Actions owns monitoring. Do not configure a second production schedule.
+```text
+SECTORS_API_KEY
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+TELEGRAM_BOT_TOKEN
+TELEGRAM_CHAT_ID
+MAX_FILINGS_PAGES_PER_RUN
+MAX_SECTORS_API_ATTEMPTS_PER_RUN
+APP_BASE_URL
+MONITOR_TRIGGER_TOKEN
+WATCHLIST_ADMIN_TOKEN
+```
 
-## Security and limitations
+Keep credentials in the local environment or platform secret store; never commit them. The service-role key and bot token must remain server-side. Public watchlist administration is disabled.
 
-The service-role key, Sectors key, and Telegram credentials belong only in server or workflow environments. The migration enables RLS, defines uniqueness constraints, and restricts table/RPC privileges; **the hosted configuration must still be verified** using `supabase/verify_security.sql` in the Supabase SQL Editor. Do not infer hosted policy status from the migration file alone.
+Useful local checks:
 
-`POST /api/monitor/run` requires a separate `MONITOR_TRIGGER_TOKEN`; watchlist writes require `WATCHLIST_ADMIN_TOKEN`. Each token must be at least 32 characters. Leave both unset for a read-only web deployment: unconfigured write endpoints fail closed. The dashboard uses server-side Supabase access, and `NEXT_PUBLIC_SUPABASE_URL` is public by design; never expose the service-role key to browser code. Health reflects the deployed app's own environment, so a read-only web deployment can report the Sectors key as missing while the GitHub worker remains configured.
-
-The engine's thresholds are v1 engineering choices that need calibration against authenticated historical data. The liquidity proxy, watchlist scope, bounded pagination, and schedule delays limit what a run can claim. A queued alert is not a delivered push; duplicate-delivery and explainability rates remain unmeasured until there are actual sends. This project is for information and analysis only, not financial, legal, or investment advice.
-
-## Verification
-
-```bash
+```sh
 npm test
 npm run typecheck
 npm run build
+node --conditions=react-server --experimental-strip-types scripts/history-ablation-proof.ts
 ```
 
-The suite covers API parsing and pagination, deduplication, PostgreSQL migration behavior, four-state classification, holder escalation and ordering, worker recovery, route authorization, and metrics with no delivery. There is no lint script.
+`npm run monitor` and `npm run ingest` access the configured Sectors API and persistence service; run them only when intentionally performing an authorized monitoring or ingestion operation. They are not needed to browse the frozen archive.
+
+## Limitations and eligibility
+
+- The archive is only the observed 3 Jul–30 Sep 2026 slice; it is not complete endpoint history or live coverage.
+- Scheduled runs can be delayed or skipped. Bounded page/request limits can yield partial coverage, and upstream availability or credits are not guaranteed.
+- Telegram may be unconfigured. A persisted alert is not proof of successful delivery; ambiguous outcomes may be `UNKNOWN`.
+- B2 thresholds are deterministic engineering rules, not calibrated investment signals. The sealed evaluation is limited to its 117 filings.
+- The product does not predict prices, recommend trades, or make legal, compliance, misconduct, or control determinations.
+- The official build period begins **19 Aug 2026**. Repository history's first commit is dated **24 Sep 2026**; Git history does not establish team onboarding chronology. **Team onboarding before code creation must be confirmed by the team before submission.**
+
+## Evidence map
+
+- [`PIVOT_PRODUCT_SPEC_V2.md`](docs/PIVOT_PRODUCT_SPEC_V2.md) — archive/product boundaries and factual badge definitions.
+- [`FINAL_SECTORS_LIVE_EVIDENCE.md`](docs/evidence/FINAL_SECTORS_LIVE_EVIDENCE.md) — manual `workflow_dispatch` runs and deduplication evidence.
+- [`HISTORY_ABLATION_PROOF.md`](docs/evidence/HISTORY_ABLATION_PROOF.md) — reproducible statefulness proof.
+- [`TELEGRAM_DELIVERY_EVIDENCE.md`](docs/evidence/TELEGRAM_DELIVERY_EVIDENCE.md) — separate persisted delivery/idempotency evidence.
+- [Sealed human evaluation](https://github.com/tonny2305/sectors_hackathon/blob/attention-benchmark/research/attention-benchmark/results/SEALED_HUMAN_EVALUATION.md) — benchmark methodology and results on the `attention-benchmark` branch.
+- [`supabase/verify_security.sql`](supabase/verify_security.sql) — read-only hosted database security verification; hosted policies still require operator verification.
+
+The submission repository also contains earlier project checkpoints and preflight research files. Read the evidence scope and date before treating any artifact as current product, live monitoring, or sealed evaluation evidence.

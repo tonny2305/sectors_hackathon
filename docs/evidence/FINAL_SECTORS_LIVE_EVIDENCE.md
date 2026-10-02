@@ -2,6 +2,10 @@
 
 Captured 2026-09-30. All timestamps below are UTC.
 
+## Manual `workflow_dispatch` functional evidence
+
+These are manual `workflow_dispatch` functional evidence, not scheduled unattended evidence.
+
 ## Execution
 
 The existing `.github/workflows/scheduled-monitor.yml` `workflow_dispatch` path was used. Both runs checked out `master` at `d0b34b626394eb99cc2670305e868f8fa8389454`. No code, thresholds, benchmarks, UI, or workflow configuration were changed for these runs. With no date inputs, the monitor used its default Jakarta date window, 2026-09-30.

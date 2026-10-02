@@ -4,6 +4,10 @@
 
 This controlled proof used the delivery-only command for one persisted alert. It did not run `runMonitoringCycle` and did not load or call the Sectors API.
 
+This is a standalone Telegram delivery/idempotency proof and is not claimed to be the same filing as the archive NSSS examples, history-ablation case, or manual live-run alert unless explicitly identified below.
+
+An ambiguous network outcome can be persisted as `UNKNOWN`; this proof does not claim formal exactly-once delivery.
+
 ## Destination Verification
 
 - Telegram API result: `ok: true`
