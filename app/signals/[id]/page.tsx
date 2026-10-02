@@ -1,0 +1,24 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ARCHIVE_LABEL, badgeExplanation, companyLabel, factualExplanation, getArchiveProvenance, getSignal, sourceLink } from '../../../lib/archive/signalkeeper.ts';
+import { delta, number, percent } from '../../../lib/presentation.ts';
+
+export default async function SignalPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const event = getSignal(id);
+  if (!event) notFound();
+  const provenance = getArchiveProvenance();
+  const sourceUrl = sourceLink(event.sourceUrl);
+  return <main id="main-content" className="container">
+    <Link className="text-link breadcrumb" href="/">← All ownership signals</Link>
+    <p className="archive-banner">{ARCHIVE_LABEL}</p>
+    <header className="event-header archive-detail-header"><div className="detail-identity"><p className="eyebrow">What changed</p><div className="detail-title"><h1>{event.symbol}</h1></div><p className="holder-name">{companyLabel(event)}</p><p className="muted">{event.holderName}</p><p className="muted">{event.transactionType} · {event.sourceDate}</p></div><div className="ownership-move"><div><strong>{percent(event.ownershipBeforePct)}</strong><span className="ownership-arrow">→</span><strong>{percent(event.ownershipAfterPct)}</strong></div><p className="ownership-delta">{delta(event.signedDeltaPp)}<span>disclosed ownership change</span></p><div className="signal-badges">{event.badges.map(badge => <span key={badge}>{badge}</span>)}</div></div></header>
+    <div className="detail-columns">
+      <section><p className="eyebrow">What the disclosure says</p><h2>Source record</h2><dl className="facts"><div><dt>Source title</dt><dd>{event.title}</dd></div><div><dt>Source body</dt><dd>{event.body}</dd></div><div><dt>Tags</dt><dd>{event.tags.join(', ') || 'None recorded'}</dd></div><div><dt>Special Context</dt><dd>{event.specialContextMatches.length ? event.specialContextMatches.map(match => <span className="raw-context" key={match}>{event.tags.includes(match) ? `Sectors tag: ${match}` : `The disclosure states: ${match}`}</span>) : 'None recorded'}</dd></div></dl></section>
+      <section><p className="eyebrow">Factual explanation</p><h2>Rendered from disclosed fields</h2><div className="explanation"><p>{factualExplanation(event)[0]}</p>{event.badges.map(badge => <p key={badge}>{badgeExplanation(event, badge)}</p>)}{event.specialContextMatches.map(match => <p key={match}>{event.tags.includes(match) ? `Sectors tag: ${match}` : `The disclosure states: ${match}`}</p>)}</div></section>
+    </div>
+    <section className="section-block"><p className="eyebrow">Transaction details</p><h2>Reported transaction fields</h2><dl className="facts archive-facts"><div><dt>Holdings before / after</dt><dd>{number(event.holdingBefore)} / {number(event.holdingAfter)}</dd></div><div><dt>Shares transacted</dt><dd>{number(event.sharesTransacted)}</dd></div><div><dt>Reported price</dt><dd>{event.price == null ? 'Not recorded' : number(event.price)}</dd></div><div><dt>Reported value</dt><dd>{event.transactionValueIdr == null ? 'Not recorded' : `IDR ${number(event.transactionValueIdr)}`}</dd></div><div><dt>Holder type</dt><dd>{event.holderType}</dd></div><div><dt>Sector / subsector</dt><dd>{event.sector} / {event.subSector}</dd></div></dl>{event.priceTransactions.length > 0 && <div className="table-wrapper"><table><caption className="sr-only">Disclosed price transactions</caption><thead><tr><th>Date</th><th>Type</th><th className="numeric">Price</th><th className="numeric">Amount transacted</th></tr></thead><tbody>{event.priceTransactions.map((row, index) => <tr key={`${row.date}-${index}`}><td>{row.date}</td><td>{row.type}</td><td className="numeric">{row.price == null ? 'Not recorded' : number(row.price)}</td><td className="numeric">{number(row.amountTransacted)}</td></tr>)}</tbody></table></div>}</section>
+    <section className="section-block holder-history"><p className="eyebrow">Holder history</p><h2>Observed holder-company history</h2><p className="section-caption">{event.pairEventCount} observed archive disclosures for this exact holder and symbol.</p><Link className="text-link" href={`/holders/${encodeURIComponent(event.pairId)}`}>View holder timeline →</Link></section>
+    <section className="provenance"><div><p className="eyebrow">Source & provenance</p><h2>Archive record</h2><p>{ARCHIVE_LABEL}</p></div><dl className="facts"><div><dt>Source timestamp</dt><dd>{event.timestamp}</dd></div><div><dt>Original source</dt><dd>{sourceUrl ? <a href={sourceUrl} rel="noreferrer">Open source →</a> : 'Not recorded'}</dd></div><div><dt>Schema version</dt><dd>{provenance ? 'signalkeeper-archive.v1' : ''}</dd></div><div><dt>Event ID</dt><dd>{event.id}</dd></div><div><dt>Archive class</dt><dd>POST_FREEZE_ARCHIVAL_HOLDOUT</dd></div></dl></section>
+  </main>;
+}
