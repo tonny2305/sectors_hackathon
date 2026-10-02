@@ -12,6 +12,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "archive:build": "node --conditions=react-server --experimental-strip-types scripts/build-signalkeeper-archive.ts",
     "ingest": "node --env-file-if-exists=.env --conditions=react-server --experimental-strip-types scripts/ingest.ts",
     "monitor": "node --env-file-if-exists=.env --conditions=react-server --experimental-strip-types scripts/monitor.ts",
     "telegram:deliver": "node --env-file-if-exists=.env --conditions=react-server --experimental-strip-types scripts/deliver-telegram.ts"
