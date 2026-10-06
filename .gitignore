@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 .next/
 coverage/
 *.tsbuildinfo
@@ -6,8 +6,11 @@ coverage/
 .env.example
 .env.*
 !.env.example
-preflight_output/
 *.log
 __pycache__/
 .supabase/
 .npm-cache/
+AGENTS.md
+CLAUDE.md
+research/
+preflight_output/
